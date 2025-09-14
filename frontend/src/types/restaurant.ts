@@ -1,0 +1,66 @@
+export interface Table {
+  id: number;
+  name: string;
+  floor: number;
+  status: "available" | "unavailable";
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Category {
+  id: number;
+  name: string;
+  description?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MenuItem {
+  id: number;
+  category_id: number;
+  category?: Category;
+  name: string;
+  description?: string;
+  price: number;
+  image_url?: string;
+  status: "available" | "unavailable";
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Order {
+  id: number;
+  table_id: number;
+  table?: Table;
+  status: "unpaid" | "paid";
+  created_at: string;
+  closed_at?: string;
+  updated_at: string;
+  order_items?: OrderItem[];
+  total_amount?: number;
+}
+
+export interface OrderItem {
+  id: number;
+  order_id: number;
+  menu_item_id: number;
+  menu_item?: MenuItem;
+  user_id: number;
+  quantity: number;
+  note?: string;
+  status: "ordered" | "cancel" | "cooking" | "done";
+  price_each: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Payment {
+  id: number;
+  order_id: number;
+  amount: number;
+  discount: number;
+  tax: number;
+  method: "cash" | "card" | "e_wallet";
+  created_at: string;
+  updated_at: string;
+}
