@@ -180,5 +180,5 @@ CORS_ALLOWED_ORIGINS = [
 
 CORS_ALLOW_CREDENTIALS = True
 
-# Custom User Model
-AUTH_USER_MODEL = 'accounts.User'
+# Không dùng custom user model nữa
+# AUTH_USER_MODEL = 'accounts.User'

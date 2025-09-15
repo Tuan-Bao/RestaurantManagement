@@ -1,6 +1,4 @@
 from django.db import models
-from django.conf import settings
-from menu.models import MenuItem
 
 class Ingredient(models.Model):
     UNIT_CHOICES = [
@@ -42,7 +40,7 @@ class StockIn(models.Model):
     ingredient = models.ForeignKey(Ingredient, on_delete=models.CASCADE, null=True, blank=True, related_name='stock_ins')
     quantity = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True, related_name='stock_ins')
+    user = models.ForeignKey('accounts.User', on_delete=models.CASCADE, null=True, blank=True, related_name='stock_ins')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -62,7 +60,7 @@ class StockOut(models.Model):
     ingredient = models.ForeignKey(Ingredient, on_delete=models.CASCADE, null=True, blank=True, related_name='stock_outs')
     quantity = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     reason = models.CharField(max_length=20, choices=REASON_CHOICES, null=True, blank=True)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True, related_name='stock_outs')
+    user = models.ForeignKey('accounts.User', on_delete=models.CASCADE, null=True, blank=True, related_name='stock_outs')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -71,20 +69,3 @@ class StockOut(models.Model):
 
     class Meta:
         db_table = 'stock_out'
-
-class Recipe(models.Model):
-    menu_item = models.ForeignKey(MenuItem, on_delete=models.CASCADE, null=True, blank=True, related_name='recipes')
-    ingredient = models.ForeignKey(Ingredient, on_delete=models.CASCADE, null=True, blank=True, related_name='recipes')
-    quantity_required = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    deleted_at = models.DateTimeField(null=True, blank=True)
-
-    def __str__(self):
-        menu_name = self.menu_item.name if self.menu_item else 'N/A'
-        ingredient_name = self.ingredient.name if self.ingredient else 'N/A'
-        return f"{menu_name} - {ingredient_name}: {self.quantity_required}"
-
-    class Meta:
-        db_table = 'recipes'
-        unique_together = ['menu_item', 'ingredient']
