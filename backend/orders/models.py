@@ -1,5 +1,4 @@
 from django.db import models
-from django.conf import settings
 from tables.models import Table
 from menu.models import MenuItem
 
@@ -31,7 +30,7 @@ class OrderItem(models.Model):
     
     order = models.ForeignKey(Order, on_delete=models.CASCADE, null=True, blank=True, related_name='order_items')
     menu_item = models.ForeignKey(MenuItem, on_delete=models.CASCADE, null=True, blank=True, related_name='order_items')
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True, related_name='order_items')
+    user = models.ForeignKey('accounts.User', on_delete=models.CASCADE, null=True, blank=True, related_name='order_items')
     quantity = models.IntegerField(null=True, blank=True)
     note = models.TextField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ordered', null=True, blank=True)

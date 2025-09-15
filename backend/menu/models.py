@@ -35,3 +35,20 @@ class MenuItem(models.Model):
 
     class Meta:
         db_table = 'menu_items'
+
+class Recipe(models.Model):
+    menu_item = models.ForeignKey(MenuItem, on_delete=models.CASCADE, null=True, blank=True, related_name='recipes')
+    ingredient = models.ForeignKey('inventory.Ingredient', on_delete=models.CASCADE, null=True, blank=True, related_name='recipes')
+    quantity_required = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        menu_name = self.menu_item.name if self.menu_item else 'N/A'
+        ingredient_name = self.ingredient.name if self.ingredient else 'N/A'
+        return f"{menu_name} - {ingredient_name}: {self.quantity_required}"
+
+    class Meta:
+        db_table = 'recipes'
+        unique_together = ['menu_item', 'ingredient']
