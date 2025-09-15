@@ -1,89 +1,43 @@
 # Restaurant Management System
 
-Hệ thống quản lý nhà hàng toàn diện với Django REST API backend và React TypeScript frontend.
-
-## 🏗️ Cấu trúc dự án
-
-```
-RestaurantManagement/
-├── backend/                 # Django REST API
-│   ├── core/               # Settings và cấu hình chính
-│   ├── accounts/           # Quản lý người dùng
-│   ├── tables/             # Quản lý bàn ăn
-│   ├── menu/               # Danh mục và món ăn
-│   ├── orders/             # Đơn hàng và thanh toán
-│   ├── inventory/          # Quản lý kho
-│   ├── requirements.txt    # Python dependencies
-│   ├── Dockerfile         # Docker config cho backend
-│   └── entrypoint.sh      # Auto-setup script
-├── frontend/               # React TypeScript App
-│   ├── src/               # Source code
-│   ├── public/            # Static files
-│   ├── package.json       # Node.js dependencies
-│   └── Dockerfile         # Docker config cho frontend
-├── docker-compose.yml      # Docker orchestration
-├── .gitignore             # Git ignore rules
-└── README.md
-```
+Hệ thống quản lý nhà hàng với Django REST API backend và React TypeScript frontend.
 
 ## 🛠️ Yêu cầu hệ thống
 
-### Docker Setup (Khuyến nghị)
-
-- **Docker:** Version 20.0+
-- **Docker Compose:** Version 2.0+
-
-### Manual Setup
-
 - **Python:** 3.11+
-- **Node.js:** 20+ (Vite yêu cầu Node 20+)
+- **Node.js:** 20+
 - **PostgreSQL:** 15+
 
 ## 🚀 Cài đặt và chạy
 
-### 🐳 Sử dụng Docker (Khuyến nghị)
-
-#### Bước 1: Clone dự án
+### 1. Clone dự án
 
 ```bash
 git clone <repository-url>
 cd RestaurantManagement
 ```
 
-#### Bước 2: Build và chạy tất cả services
+### 2. Setup Database (PostgreSQL)
 
-```bash
-# Build và chạy ở chế độ background
-docker-compose up --build -d
+Cài đặt PostgreSQL và tạo database:
 
-# Hoặc chạy ở chế độ foreground để xem logs
-docker-compose up --build
+**Windows (sử dụng pgAdmin hoặc psql):**
+
+```sql
+CREATE DATABASE restaurant;
+CREATE USER postgres WITH PASSWORD '12345';
+GRANT ALL PRIVILEGES ON DATABASE restaurant TO postgres;
 ```
 
-#### Bước 3: Kiểm tra trạng thái
+**Hoặc sử dụng psql command line:**
 
 ```bash
-# Xem trạng thái containers
-docker-compose ps
-
-# Xem logs
-docker-compose logs backend
-docker-compose logs frontend
+psql -U postgres
+CREATE DATABASE restaurant;
+\q
 ```
 
-#### Bước 4: Dừng services
-
-```bash
-# Dừng containers
-docker-compose down
-
-# Dừng và xóa volumes (reset hoàn toàn)
-docker-compose down -v
-```
-
-### 🔧 Chạy thủ công (Development)
-
-#### Backend Setup
+### 3. Setup Backend
 
 ```bash
 cd backend
@@ -100,8 +54,14 @@ source venv/bin/activate
 # Cài đặt dependencies
 pip install -r requirements.txt
 
-# Thiết lập database (PostgreSQL phải chạy trước)
-python manage.py makemigrations
+# Tạo .env file (đã tạo ở trên)
+
+# Chạy migrations
+python manage.py makemigrations accounts
+python manage.py makemigrations tables
+python manage.py makemigrations menu
+python manage.py makemigrations orders
+python manage.py makemigrations inventory
 python manage.py migrate
 
 # Tạo superuser
@@ -111,7 +71,7 @@ python manage.py createsuperuser
 python manage.py runserver
 ```
 
-#### Frontend Setup
+### 4. Setup Frontend
 
 ```bash
 cd frontend
@@ -125,174 +85,124 @@ npm run dev
 
 ## 🌐 Truy cập ứng dụng
 
-Sau khi chạy thành công, các services sẽ có sẵn tại:
+| Service         | URL                         |
+| --------------- | --------------------------- |
+| **Frontend**    | http://localhost:3000       |
+| **Backend API** | http://localhost:8000       |
+| **Admin Panel** | http://localhost:8000/admin |
 
-| Service         | URL                         | Mô tả                      |
-| --------------- | --------------------------- | -------------------------- |
-| **Frontend**    | http://localhost:3000       | Giao diện người dùng React |
-| **Backend API** | http://localhost:8000       | Django REST API            |
-| **Admin Panel** | http://localhost:8000/admin | Django Admin Interface     |
-| **API Docs**    | http://localhost:8000/api/  | API Documentation          |
-| **PostgreSQL**  | localhost:5432              | Database (chỉ với Docker)  |
+## 🗄️ Database Config
 
-### 🔐 Tài khoản mặc định
-
-**Admin Account (tự động tạo với Docker):**
-
-- Username: `admin`
-- Password: `admin123`
-- Email: `admin@example.com`
-
-## 🗄️ Cấu hình Database
-
-### Docker PostgreSQL
+Đảm bảo PostgreSQL đang chạy với cấu hình:
 
 - **Host:** localhost
 - **Port:** 5432
 - **Database:** restaurant
 - **Username:** postgres
-- **Password:** 12345
+- **Password:** ....
 
-### Kết nối pgAdmin
+## 🔧 Development Scripts
 
-1. Mở pgAdmin desktop
-2. Create Server với thông tin:
-   - Host: `localhost`
-   - Port: `5432`
-   - Database: `postgres` (maintenance DB)
-   - Username: `postgres`
-   - Password: `12345`
-3. Sau khi kết nối, expand Databases → restaurant để xem tables
-
-## ✨ Tính năng
-
-### 👨‍🍳 Nhân viên phục vụ (Staff)
-
-- ✅ Quản lý bàn ăn (mở bàn, đóng bàn, chuyển bàn)
-- ✅ Tạo và chỉnh sửa đơn hàng
-- ✅ Theo dõi trạng thái món ăn
-- ✅ Xử lý thanh toán
-- ✅ In hóa đơn
-
-### 👨‍💼 Quản trị viên (Admin)
-
-- ✅ Tất cả quyền của nhân viên
-- ✅ CRUD menu và danh mục món ăn
-- ✅ Quản lý tài khoản nhân viên
-- ✅ Báo cáo doanh thu và thống kê
-- ✅ Quản lý kho và nguyên liệu
-- ✅ Theo dõi tồn kho và cảnh báo hết hàng
-
-## 🗃️ Database Schema
-
-Hệ thống sử dụng PostgreSQL với **21 bảng** được tổ chức theo modules:
-
-### 👥 User Management
-
-- `users` - Tài khoản người dùng (admin/staff)
-- `users_groups` - Nhóm quyền
-- `users_user_permissions` - Quyền chi tiết
-
-### 🍽️ Restaurant Operations
-
-- `categories` - Danh mục món ăn
-- `menu_items` - Món ăn (giá, mô tả, hình ảnh)
-- `tables` - Bàn ăn và trạng thái
-
-### 📝 Order Management
-
-- `orders` - Đơn hàng
-- `orders_items` - Chi tiết món trong đơn
-- `payments` - Thanh toán
-
-### 📦 Inventory Management
-
-- `ingredients` - Nguyên liệu
-- `storages` - Kho với cảnh báo tồn kho
-- `stock_in` - Phiếu nhập kho
-- `stock_out` - Phiếu xuất kho
-- `recipes` - Công thức món ăn
-
-## 🔧 Development
-
-### Thêm tính năng mới
-
-1. **Backend:** Tạo app Django mới trong `/backend`
-2. **Frontend:** Thêm components trong `/frontend/src`
-3. **Database:** Tạo migrations với `python manage.py makemigrations`
-
-### Debugging
+### Backend
 
 ```bash
-# Xem logs containers
-docker-compose logs -f backend
-docker-compose logs -f frontend
-docker-compose logs -f postgres
+# Chạy server
+python manage.py runserver
 
-# Truy cập container
-docker-compose exec backend bash
-docker-compose exec postgres psql -U postgres -d restaurant
+# Tạo migrations
+python manage.py makemigrations
 
-# Restart service
-docker-compose restart backend
+# Chạy migrations
+python manage.py migrate
+
+# Tạo superuser
+python manage.py createsuperuser
+
+# Chạy tests
+python manage.py test
 ```
 
-### Testing
+### Frontend
 
 ```bash
-# Backend tests
-docker-compose exec backend python manage.py test
+# Chạy dev server
+npm run dev
 
-# Frontend tests
-docker-compose exec frontend npm test
+# Build production
+npm run build
+
+# Preview build
+npm run preview
+
+# Lint code
+npm run lint
 ```
 
-## 📋 Todo List
+## 🐛 Troubleshooting
 
-- [ ] Implement authentication JWT
-- [ ] Add real-time order notifications
-- [ ] Create mobile-responsive design
-- [ ] Add inventory alerts
-- [ ] Implement reporting dashboard
-- [ ] Add multi-language support
+### Database Connection Error
 
-## 🤝 Contributing
+1. Kiểm tra PostgreSQL service đang chạy
+2. Kiểm tra thông tin database trong backend/.env
+3. Tạo database nếu chưa có
 
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit changes (`git commit -m 'Add AmazingFeature'`)
-4. Push to branch (`git push origin feature/AmazingFeature`)
-5. Open Pull Request
+### Port Conflicts
 
-## 📄 License
+Thay đổi ports nếu bị conflict:
 
-This project is licensed under the MIT License.
+**Backend:** Thay đổi port trong `python manage.py runserver 8001`
 
-## 🆘 Troubleshooting
+**Frontend:** Thay đổi port trong vite.config.ts:
 
-### Container không start
+```typescript
+export default defineConfig({
+  server: {
+    port: 3001,
+  },
+});
+```
+
+### Module Import Errors
 
 ```bash
-docker-compose down -v
-docker-compose up --build
+# Backend - reinstall dependencies
+pip install -r requirements.txt
+
+# Frontend - reinstall dependencies
+rm -rf node_modules package-lock.json
+npm install
 ```
 
-### Database connection lỗi
+## 🚀 Quick Start
+
+**Terminal 1 - Backend:**
 
 ```bash
-# Kiểm tra PostgreSQL container
-docker-compose logs postgres
-# Reset database
-docker-compose down -v
+cd backend
+python -m venv venv
+venv\Scripts\activate  # Windows
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py createsuperuser
+python manage.py runserver
 ```
 
-### Port conflicts
+**Terminal 2 - Frontend:**
 
-Đổi ports trong `docker-compose.yml` nếu bị conflict:
-
-```yaml
-ports:
-  - "8001:8000" # Backend
-  - "3001:5173" # Frontend
-  - "5433:5432" # PostgreSQL
+```bash
+cd frontend
+npm install
+npm run dev
 ```
+
+**Terminal 3 - Database:**
+Đảm bảo PostgreSQL đang chạy và đã tạo database `restaurant`.
+
+## 🎯 Next Steps
+
+Sau khi setup thành công, bạn có thể:
+
+1. Truy cập http://localhost:3000 để xem frontend
+2. Truy cập http://localhost:8000/admin để quản lý backend
+3. Bắt đầu phát triển các tính năng
+4. Khi ổn định, có thể quay lại sử dụng Docker
