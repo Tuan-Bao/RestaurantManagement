@@ -49,7 +49,7 @@ def login_view(request):
         
         return Response({
             'success': True,
-            'message': 'Đăng nhập thành công',
+            'message': 'Login successfully',
             'data': {
                 'user': UserSerializer(user).data,
                 'access_token': str(refresh.access_token),
@@ -59,7 +59,7 @@ def login_view(request):
     
     return Response({
         'success': False,
-        'message': 'Đăng nhập thất bại',
+        'message': 'Login failed',
         'errors': serializer.errors
     }, status=status.HTTP_400_BAD_REQUEST)
 
@@ -91,7 +91,7 @@ class ProfileView(generics.RetrieveUpdateAPIView):
         if not user:
             return Response({
                 'success': False,
-                'message': 'User không tồn tại'
+                'message': 'User does not exist'
             }, status=status.HTTP_404_NOT_FOUND)
         
         serializer = self.get_serializer(user)
@@ -105,7 +105,7 @@ class ProfileView(generics.RetrieveUpdateAPIView):
         if not user:
             return Response({
                 'success': False,
-                'message': 'User không tồn tại'
+                'message': 'User does not exist'
             }, status=status.HTTP_404_NOT_FOUND)
         
         serializer = self.get_serializer(user, data=request.data, partial=True)
@@ -113,13 +113,13 @@ class ProfileView(generics.RetrieveUpdateAPIView):
             serializer.save()
             return Response({
                 'success': True,
-                'message': 'Cập nhật profile thành công',
+                'message': 'Profile updated successfully',
                 'data': serializer.data
             })
         
         return Response({
             'success': False,
-            'message': 'Cập nhật thất bại',
+            'message': 'Profile update failed',
             'errors': serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
 
@@ -156,19 +156,20 @@ class UserListCreateView(generics.ListCreateAPIView):
             user = serializer.save()
             return Response({
                 'success': True,
-                'message': 'Tạo user thành công',
+                'message': 'Created user successfully',
                 'data': UserSerializer(user).data
             }, status=status.HTTP_201_CREATED)
         
         return Response({
             'success': False,
-            'message': 'Tạo user thất bại',
+            'message': 'Created user failed',
             'errors': serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
 
 
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     """
+    GET    /api/users/{id}/ - Lấy thông tin user (Admin only)
     PUT    /api/users/{id}/ - Cập nhật user (Admin only)
     DELETE /api/users/{id}/ - Xóa user (Admin only)
     """
@@ -178,6 +179,8 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
         return User.objects.filter(deleted_at__isnull=True)
     
     def get_serializer_class(self):
+        if self.request.method == 'GET':
+            return UserSerializer
         return UserUpdateSerializer
     
     def update(self, request, *args, **kwargs):
@@ -188,13 +191,13 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
             serializer.save()
             return Response({
                 'success': True,
-                'message': 'Cập nhật user thành công',
+                'message': 'Updated user successfully',
                 'data': UserSerializer(user).data
             })
         
         return Response({
             'success': False,
-            'message': 'Cập nhật thất bại',
+            'message': 'Updated user failed',
             'errors': serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
     
@@ -207,5 +210,5 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
         
         return Response({
             'success': True,
-            'message': 'Xóa user thành công'
+            'message': 'Deleted user successfully'
         }, status=status.HTTP_204_NO_CONTENT)

@@ -12,3 +12,15 @@ urlpatterns = [
     path('users/', views.UserListCreateView.as_view(), name='user-list-create'),
     path('users/<int:pk>/', views.UserDetailView.as_view(), name='user-detail'),
 ]
+
+# Authentication:
+# POST /api/auth/login/ - Đăng nhập
+# GET /api/auth/profile/ - Xem thông tin cá nhân
+# PUT /api/auth/profile/ - Cập nhật thông tin cá nhân
+
+# User Management (Admin only):
+# GET /api/users/ - Danh sách users
+# POST /api/users/ - Tạo user mới
+# GET /api/users/{id}/ - Xem chi tiết user
+# PUT /api/users/{id}/ - Cập nhật user
+# DELETE /api/users/{id}/ - Xóa user

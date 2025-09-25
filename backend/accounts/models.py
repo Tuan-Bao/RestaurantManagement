@@ -24,6 +24,16 @@ class User(models.Model):
         return check_password(raw_password, self.password)
 
     @property
+    def is_authenticated(self):
+        """Always return True. This is a way to tell if the user has been authenticated."""
+        return True
+
+    @property
+    def is_anonymous(self):
+        """Always return False. This is a way to tell if the user is anonymous."""
+        return False
+
+    @property
     def is_admin(self):
         """Check if user is admin."""
         return self.role == 'admin'
