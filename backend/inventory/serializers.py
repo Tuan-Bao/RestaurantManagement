@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import Ingredient, Storage, StockIn, StockOut, Recipe
+from .models import Ingredient, Storage, StockIn, StockOut
+from menu.models import Recipe
 from menu.serializers import MenuItemSerializer
 
 class IngredientSerializer(serializers.ModelSerializer):
