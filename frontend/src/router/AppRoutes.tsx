@@ -5,6 +5,8 @@ import Login from "../pages/Login";
 import AdminDashboard from "../pages/admin/AdminDashboard";
 import StaffDashboard from "../pages/staff/StaffDashboard";
 import StaffTables from "../pages/staff/StaffTables";
+import StaffOrders from "../pages/staff/StaffOrders";
+import StaffMenu from "../pages/staff/StaffMenu";
 import ProtectedRoute from "./ProtectedRoute";
 import "../layouts/Layout.css";
 // App
@@ -44,6 +46,22 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute requiredRole="staff">
             <StaffTables />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/staff/orders"
+        element={
+          <ProtectedRoute requiredRole="staff">
+            <StaffOrders />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/staff/menu"
+        element={
+          <ProtectedRoute requiredRole="staff">
+            <StaffMenu />
           </ProtectedRoute>
         }
       />
