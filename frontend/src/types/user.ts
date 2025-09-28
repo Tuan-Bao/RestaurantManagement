@@ -13,7 +13,7 @@ export interface LoginCredentials {
 }
 
 export interface AuthResponse {
-  access: string;
-  refresh: string;
+  access_token: string;
+  refresh_token: string;
   user: User;
 }
