@@ -45,6 +45,17 @@
   transition: all 0.2s ease;
 }
 
+/* Table card styles */
+.table-card {
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.table-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
 /* Button hover effects */
 .btn {
   transition: all 0.2s ease;

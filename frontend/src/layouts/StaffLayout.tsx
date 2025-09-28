@@ -81,7 +81,7 @@ const StaffLayout: React.FC<StaffLayoutProps> = ({ children }) => {
         <header className="bg-white shadow-sm border-bottom px-4 py-3">
           <div className="d-flex justify-content-between align-items-center">
             <div>
-              <h5 className="mb-0">Giao diện nhân viên</h5>
+              <h5 className="mb-0">Trang nhân viên</h5>
               <small className="text-muted">Xin chào, {user?.name}!</small>
             </div>
             <div className="d-flex align-items-center">

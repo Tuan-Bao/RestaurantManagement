@@ -4,6 +4,7 @@ import Loading from "../components/shared/Loading";
 import Login from "../pages/Login";
 import AdminDashboard from "../pages/admin/AdminDashboard";
 import StaffDashboard from "../pages/staff/StaffDashboard";
+import StaffTables from "../pages/staff/StaffTables";
 import ProtectedRoute from "./ProtectedRoute";
 import "../layouts/Layout.css";
 // App
@@ -35,6 +36,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute requiredRole="staff">
             <StaffDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/staff/tables"
+        element={
+          <ProtectedRoute requiredRole="staff">
+            <StaffTables />
           </ProtectedRoute>
         }
       />
