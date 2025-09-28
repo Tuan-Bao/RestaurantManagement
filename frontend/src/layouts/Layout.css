@@ -4,6 +4,7 @@
 /* Layout Styles */
 .sidebar-width {
   width: 280px;
+  transition: all 0.3s ease-in-out;
   min-height: 100vh;
 }
 
@@ -78,14 +79,14 @@
 /* Responsive design */
 @media (max-width: 768px) {
   .sidebar-width {
-    width: 100%;
-    position: fixed;
-    z-index: 1000;
+    width: 300px;
+    top: 0;
+    left: 0;
+    bottom: 0;
     transform: translateX(-100%);
-    transition: transform 0.3s ease;
   }
 
-  .sidebar-width.show {
+  .sidebar-width.d-block {
     transform: translateX(0);
   }
 
@@ -123,4 +124,24 @@
   color: #198754;
   font-size: 0.875rem;
   margin-top: 0.25rem;
+}
+
+/* Smooth transitions */
+.sidebar-width,
+.sidebar-width * {
+  transition: all 0.3s ease-in-out;
+}
+
+/* Overlay styles */
+.bg-opacity-50 {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+}
+
+@media (min-width: 992px) {
+  .sidebar-width {
+    position: sticky !important;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
 }
