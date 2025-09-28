@@ -5,23 +5,28 @@ export const authService = {
   // Login
   login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
     const response = await api.post("/auth/login/", credentials);
-    return response.data;
+    return response.data.data;
   },
 
   // Logout
   logout: async (): Promise<void> => {
-    const refreshToken = localStorage.getItem("refresh_token");
-    if (refreshToken) {
-      await api.post("/auth/logout/", { refresh: refreshToken });
-    }
+    // const refreshToken = localStorage.getItem("refresh_token");
+    // if (refreshToken) {
+    //   await api.post("/auth/logout/", { refresh: refreshToken });
+    // }
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
   },
 
   // Get current user
   getCurrentUser: async (): Promise<User> => {
-    const response = await api.get("/auth/profile/");
-    return response.data;
+    const accessToken = localStorage.getItem("access_token");
+    const response = await api.get("/auth/profile/", {
+      headers: {
+        Authorization: accessToken ? `Bearer ${accessToken}` : "",
+      },
+    });
+    return response.data.data;
   },
 
   // Check if user is authenticated
