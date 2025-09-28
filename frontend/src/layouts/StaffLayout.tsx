@@ -122,7 +122,7 @@ const StaffLayout: React.FC<StaffLayoutProps> = ({ children }) => {
 
         {/* Page Content */}
         <main className="flex-grow-1 bg-light p-4">
-          <div className="container-fluid">{children}</div>
+          <div style={{ maxWidth: "1200px", margin: "0 auto" }}>{children}</div>
         </main>
 
         {/* Footer */}
