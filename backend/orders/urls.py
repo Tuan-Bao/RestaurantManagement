@@ -9,9 +9,8 @@ urlpatterns = [
     path('<int:pk>/', views.OrderDetailView.as_view(), name='order-detail'),
     path('table/<int:table_id>/', views.order_by_table_view, name='order-by-table'),
     
-    # Order Items endpoints
+    # Order Items endpoints  
     path('<int:order_id>/items/', views.OrderItemBulkUpdateView.as_view(), name='order-item-bulk-update'),
-    path('items/<int:pk>/status/', views.OrderItemStatusUpdateView.as_view(), name='order-item-status-update'),
     path('items/<int:pk>/', views.OrderItemDeleteView.as_view(), name='order-item-delete'),
     
     # Payment endpoints
@@ -26,22 +25,21 @@ urlpatterns = [
 # ======================================================================
 
 # 📋 ORDER APIs:
-# GET    /api/orders/?table=...&status=...     - Danh sách đơn hàng
+# GET    /api/orders/?table=...&status=...&floor=...&date_from=...&date_to=...&table_name=...     - Danh sách đơn hàng + lịch sử
 # POST   /api/orders/                          - Tạo đơn hàng mới + thêm món
-# GET    /api/orders/{id}/                     - Chi tiết đơn hàng
+# GET    /api/orders/{id}/                     - Chi tiết đơn hàng (bao gồm table info, floor)
 # GET    /api/orders/table/{table_id}/         - Xem đơn hàng theo bàn
 
 # 🍽️ ORDER ITEMS APIs:
 # PATCH  /api/orders/{order_id}/items/         - Quản lý món (thêm/sửa/xóa)
-# PATCH  /api/orders/items/{id}/status/        - Cập nhật trạng thái món
 # DELETE /api/orders/items/{id}/               - Xóa món (chỉ status = ordered)
 
-# 💳 PAYMENT APIs:
-# GET    /api/orders/{order_id}/payments/      - Danh sách thanh toán
-# POST   /api/orders/{order_id}/payments/      - Thanh toán + đóng đơn tự động
+# 💰 PAYMENT APIs:
+# GET    /api/orders/{order_id}/payments/     - Danh sách thanh toán của order
+# POST   /api/orders/{order_id}/payments/     - Tạo thanh toán mới
 
 # 📊 STATISTICS APIs:
-# GET    /api/orders/stats/                    - Thống kê đơn hàng
+# GET    /api/orders/stats/                   - Thống kê orders
 
 # ======================================================================
 # BODY EXAMPLES:
@@ -63,11 +61,6 @@ urlpatterns = [
 #   {"menu_item": 4, "quantity": 2}                        // Mới -> thêm
 # ]
 # Món không có trong mảng sẽ bị xóa (nếu status = ordered)
-
-# PATCH /api/orders/items/{id}/status/ - Cập nhật trạng thái món:
-# {
-#   "status": "cooking"    // ordered -> cooking -> done -> cancelled
-# }
 
 # POST /api/orders/{order_id}/payments/ - Thanh toán:
 # {
