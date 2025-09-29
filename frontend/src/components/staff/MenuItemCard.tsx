@@ -7,52 +7,63 @@ interface MenuItemCardProps {
   onViewDetails: (item: MenuItem) => void;
 }
 
+const formatVND = (n: number) =>
+  (n ?? 0).toLocaleString("vi-VN", { maximumFractionDigits: 0 });
+
 const MenuItemCard: React.FC<MenuItemCardProps> = ({
   item,
   onToggleAvailability,
   onViewDetails,
 }) => {
+  const tags = item.tags ?? [];
+  const ingredients = item.ingredients ?? [];
+  const allergens = item.allergens ?? [];
+
   return (
     <div
       className={`card h-100 menu-item-card ${
         !item.isAvailable ? "unavailable" : ""
       }`}
     >
-      <div className="card-body">
-        {/* Item Header */}
+      <div className="card-body d-flex flex-column">
         <div className="d-flex justify-content-between align-items-start mb-3">
-          <div className="flex-grow-1">
+          <div className="flex-grow-1 pe-3">
             <h6 className="card-title mb-1 d-flex align-items-center">
-              {item.name}
+              <span className="text-truncate">{item.name}</span>
               {item.isPopular && (
                 <span className="badge bg-warning text-dark ms-2">
-                  <i className="bi bi-star-fill me-1"></i>
+                  <i className="bi bi-star-fill me-1" />
                   Phổ biến
                 </span>
               )}
             </h6>
 
-            <p className="card-text text-muted small mb-2 line-clamp-2">
-              {item.description}
-            </p>
+            {item.description && (
+              <p className="card-text text-muted small mb-2 line-clamp-2">
+                {item.description}
+              </p>
+            )}
 
             <div className="d-flex align-items-center gap-3 mb-2">
               <span className="fw-bold text-primary fs-6">
-                {item.price.toLocaleString("vi-VN")}đ
+                {formatVND(item.price)}đ
               </span>
-              <small className="text-muted">
-                <i className="bi bi-clock me-1"></i>
-                {item.preparationTime} phút
-              </small>
+              {typeof item.preparationTime === "number" && (
+                <small className="text-muted">
+                  <i className="bi bi-clock me-1" />
+                  {item.preparationTime} phút
+                </small>
+              )}
             </div>
           </div>
 
-          {/* Availability Toggle */}
-          <div className="form-check form-switch">
+          {/* Availability */}
+          <div className="form-check form-switch text-nowrap">
             <input
               className="form-check-input"
               type="checkbox"
-              checked={item.isAvailable}
+              role="switch"
+              checked={!!item.isAvailable}
               onChange={() => onToggleAvailability(item.id)}
               id={`availability-${item.id}`}
             />
@@ -66,58 +77,59 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
         </div>
 
         {/* Tags */}
-        {item.tags.length > 0 && (
+        {tags.length > 0 && (
           <div className="mb-3">
-            {item.tags.slice(0, 3).map((tag, index) => (
-              <span key={index} className="badge bg-light text-dark me-1">
+            {tags.slice(0, 3).map((tag, index) => (
+              <span key={`${tag}-${index}`} className="badge bg-light text-dark me-1">
                 {tag}
               </span>
             ))}
-            {item.tags.length > 3 && (
+            {tags.length > 3 && (
               <span className="badge bg-light text-dark">
-                +{item.tags.length - 3}
+                +{tags.length - 3}
               </span>
             )}
           </div>
         )}
 
-        {/* Ingredients Preview */}
-        <div className="mb-3">
-          <small className="text-muted d-block mb-1">
-            <i className="bi bi-egg me-1"></i>
-            Nguyên liệu chính:
-          </small>
-          <small className="text-secondary">
-            {item.ingredients.slice(0, 3).join(", ")}
-            {item.ingredients.length > 3 && "..."}
-          </small>
-        </div>
+        {ingredients.length > 0 && (
+          <div className="mb-3">
+            <small className="text-muted d-block mb-1">
+              <i className="bi bi-egg me-1" />
+              Nguyên liệu chính:
+            </small>
+            <small className="text-secondary">
+              {ingredients.slice(0, 3).join(", ")}
+              {ingredients.length > 3 && "..."}
+            </small>
+          </div>
+        )}
 
         {/* Allergens */}
-        {item.allergens.length > 0 && (
+        {allergens.length > 0 && (
           <div className="mb-3">
             <small className="text-warning d-block mb-1">
-              <i className="bi bi-exclamation-triangle me-1"></i>
+              <i className="bi bi-exclamation-triangle me-1" />
               Chất gây dị ứng:
             </small>
-            <div>
-              {item.allergens.map((allergen, index) => (
+            <div className="d-flex flex-wrap">
+              {allergens.map((a, idx) => (
                 <span
-                  key={index}
-                  className="badge bg-warning text-dark me-1 small"
+                  key={`${a}-${idx}`}
+                  className="badge bg-warning text-dark me-1 mb-1 small"
                 >
-                  {allergen}
+                  {a}
                 </span>
               ))}
             </div>
           </div>
         )}
 
-        {/* Nutrition Info */}
+        {/* Nutrition */}
         {item.nutritionInfo && (
           <div className="mb-3">
             <small className="text-muted d-block mb-1">
-              <i className="bi bi-heart-pulse me-1"></i>
+              <i className="bi bi-heart-pulse me-1" />
               Dinh dưỡng (100g):
             </small>
             <div className="row text-center">
@@ -149,13 +161,13 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
           </div>
         )}
 
-        {/* Action Buttons */}
+        {/* Actions */}
         <div className="d-flex gap-2 mt-auto">
           <button
             className="btn btn-primary btn-sm flex-grow-1"
             onClick={() => onViewDetails(item)}
           >
-            <i className="bi bi-eye me-1"></i>
+            <i className="bi bi-eye me-1" />
             Xem công thức
           </button>
 
@@ -164,11 +176,12 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
               className="btn btn-outline-secondary btn-sm dropdown-toggle"
               type="button"
               data-bs-toggle="dropdown"
+              aria-expanded="false"
               aria-label="Thao tác khác"
             >
-              <i className="bi bi-gear"></i>
+              <i className="bi bi-gear" />
             </button>
-            <ul className="dropdown-menu">
+            <ul className="dropdown-menu dropdown-menu-end">
               <li>
                 <button
                   className="dropdown-item"
@@ -178,7 +191,7 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
                     className={`bi ${
                       item.isAvailable ? "bi-pause-circle" : "bi-play-circle"
                     } me-2`}
-                  ></i>
+                  />
                   {item.isAvailable ? "Đánh dấu hết món" : "Đánh dấu có sẵn"}
                 </button>
               </li>
@@ -187,13 +200,13 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
               </li>
               <li>
                 <button className="dropdown-item">
-                  <i className="bi bi-pencil me-2"></i>
+                  <i className="bi bi-pencil me-2" />
                   Chỉnh sửa thông tin
                 </button>
               </li>
               <li>
                 <button className="dropdown-item">
-                  <i className="bi bi-printer me-2"></i>
+                  <i className="bi bi-printer me-2" />
                   In công thức
                 </button>
               </li>
@@ -202,11 +215,11 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
         </div>
       </div>
 
-      {/* Status Overlay */}
+      {/* Overlay trạng thái */}
       {!item.isAvailable && (
         <div className="unavailable-overlay">
           <div className="text-center">
-            <i className="bi bi-pause-circle-fill text-danger fs-1 mb-2"></i>
+            <i className="bi bi-pause-circle-fill text-danger fs-1 mb-2" />
             <div className="fw-bold text-danger">Hết món</div>
           </div>
         </div>
