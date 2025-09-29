@@ -41,6 +41,10 @@ def login_view(request):
     if serializer.is_valid():
         user = serializer.validated_data['user']
         
+        # Set user as active when login successfully
+        user.is_active = True
+        user.save()
+        
         # Tạo JWT tokens
         refresh = RefreshToken()
         refresh['user_id'] = user.id
@@ -62,6 +66,45 @@ def login_view(request):
         'message': 'Login failed',
         'errors': serializer.errors
     }, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def logout_view(request):
+    """
+    POST /api/auth/logout/
+    Logout user và set is_active = False
+    """
+    try:
+        # Lấy user hiện tại từ JWT token
+        user_id = request.auth.payload.get('user_id') if request.auth else None
+        if user_id:
+            user = User.objects.get(id=user_id, deleted_at__isnull=True)
+            
+            # Set user as inactive when logout
+            user.is_active = False
+            user.save()
+            
+            return Response({
+                'success': True,
+                'message': 'Logout successfully'
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response({
+                'success': False,
+                'message': 'Invalid token'
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+    except User.DoesNotExist:
+        return Response({
+            'success': False,
+            'message': 'User not found'
+        }, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({
+            'success': False,
+            'message': 'Logout failed'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class ProfileView(generics.RetrieveUpdateAPIView):
