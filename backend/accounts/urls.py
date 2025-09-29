@@ -19,7 +19,9 @@ urlpatterns = [
 # PUT /api/auth/profile/ - Cập nhật thông tin cá nhân
 
 # User Management (Admin only):
-# GET /api/users/ - Danh sách users
+# GET /api/users/ - Danh sách users (có hỗ trợ filtering)
+#   Query parameters: name, username, role
+#   Ví dụ: /api/users/?name=Nguyen&role=staff
 # POST /api/users/ - Tạo user mới
 # GET /api/users/{id}/ - Xem chi tiết user
 # PUT /api/users/{id}/ - Cập nhật user
