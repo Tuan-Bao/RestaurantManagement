@@ -46,7 +46,7 @@ class StockIn(models.Model):
     ingredient = models.ForeignKey(Ingredient, on_delete=models.CASCADE, null=True, blank=True, related_name='stock_ins')
     quantity = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, help_text='Total price for this quantity')
-    user_id = models.ForeignKey('accounts.User', on_delete=models.CASCADE, null=True, blank=True, related_name='stock_ins')
+    user = models.ForeignKey('accounts.User', on_delete=models.CASCADE, null=True, blank=True, related_name='stock_ins')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -74,7 +74,7 @@ class StockOut(models.Model):
     ingredient = models.ForeignKey(Ingredient, on_delete=models.CASCADE, null=True, blank=True, related_name='stock_outs')
     quantity = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     reason = models.CharField(max_length=20, choices=REASON_CHOICES, null=True, blank=True)
-    user_id = models.ForeignKey('accounts.User', on_delete=models.CASCADE, null=True, blank=True, related_name='stock_outs')
+    user = models.ForeignKey('accounts.User', on_delete=models.CASCADE, null=True, blank=True, related_name='stock_outs')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

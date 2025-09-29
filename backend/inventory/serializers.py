@@ -33,8 +33,8 @@ class StockInSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = StockIn
-        fields = ['id', 'ingredient', 'ingredient_id', 'quantity', 'price', 'price_per_unit', 'user_id', 'created_at']
-        read_only_fields = ['id', 'user_id', 'created_at', 'price_per_unit']
+        fields = ['id', 'ingredient', 'ingredient_id', 'quantity', 'price', 'price_per_unit', 'user', 'created_at']
+        read_only_fields = ['id', 'user', 'created_at', 'price_per_unit']
         
     def validate_quantity(self, value):
         if value is None or value <= 0:
@@ -53,8 +53,8 @@ class StockOutSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = StockOut
-        fields = ['id', 'ingredient', 'ingredient_id', 'quantity', 'reason', 'user_id', 'created_at']
-        read_only_fields = ['id', 'user_id', 'created_at']
+        fields = ['id', 'ingredient', 'ingredient_id', 'quantity', 'reason', 'user', 'created_at']
+        read_only_fields = ['id', 'user', 'created_at']
         
     def validate_quantity(self, value):
         if value is None or value <= 0:
