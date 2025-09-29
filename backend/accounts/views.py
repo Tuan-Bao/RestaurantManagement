@@ -211,8 +211,14 @@ class UserListCreateView(generics.ListCreateAPIView):
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     """
     GET    /api/users/{id}/ - Lấy thông tin user (Admin only)
-    PUT    /api/users/{id}/ - Cập nhật user (Admin only)
+    PUT    /api/users/{id}/ - Cập nhật user hoàn toàn (Admin only)
+    PATCH  /api/users/{id}/ - Cập nhật một phần user (Admin only)
     DELETE /api/users/{id}/ - Xóa user (Admin only)
+    
+    Update features:
+    - Supports both PUT (full update) and PATCH (partial update)
+    - Can update password with automatic hashing
+    - All fields are optional in PATCH requests
     
     Delete validation rules:
     - Cannot delete yourself
@@ -226,25 +232,59 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     def get_serializer_class(self):
         if self.request.method == 'GET':
             return UserSerializer
+        elif self.request.method in ['PUT', 'PATCH']:
+            return UserUpdateSerializer
         return UserUpdateSerializer
     
     def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
         user = self.get_object()
-        serializer = self.get_serializer(user, data=request.data, partial=True)
+        
+        # Xác định xem có phải partial update (PATCH) không
+        if request.method == 'PATCH':
+            partial = True
+        
+        serializer = self.get_serializer(user, data=request.data, partial=partial)
         
         if serializer.is_valid():
-            serializer.save()
-            return Response({
+            # Lưu thông tin user cũ để log
+            old_data = {
+                'name': user.name,
+                'username': user.username,
+                'role': user.role
+            }
+            
+            # Cập nhật user
+            updated_user = serializer.save()
+            
+            # Tạo response message tùy thuộc vào method
+            method_name = "partially updated" if request.method == 'PATCH' else "updated"
+            
+            response_data = {
                 'success': True,
-                'message': 'Updated user successfully',
-                'data': UserSerializer(user).data
-            })
+                'message': f'User {method_name} successfully',
+                'data': UserSerializer(updated_user).data
+            }
+            
+            # Thêm thông tin về các field đã được cập nhật (chỉ cho PATCH)
+            if request.method == 'PATCH' and request.data:
+                updated_fields = list(request.data.keys())
+                if 'password' in updated_fields:
+                    updated_fields[updated_fields.index('password')] = 'password (encrypted)'
+                response_data['updated_fields'] = updated_fields
+            
+            return Response(response_data)
         
         return Response({
             'success': False,
-            'message': 'Updated user failed',
+            'message': f'User update failed',
             'errors': serializer.errors
         }, status=status.HTTP_400_BAD_REQUEST)
+    
+    def partial_update(self, request, *args, **kwargs):
+        """Handle PATCH requests explicitly"""
+        kwargs['partial'] = True
+        return self.update(request, *args, **kwargs)
     
     def destroy(self, request, *args, **kwargs):
         user_to_delete = self.get_object()
