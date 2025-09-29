@@ -30,16 +30,27 @@ class OrderItemCreateSerializer(serializers.ModelSerializer):
 
 class OrderSerializer(serializers.ModelSerializer):
     table_name = serializers.CharField(source='table.name', read_only=True)
-    table_number = serializers.CharField(source='table.number', read_only=True)
-    order_items = OrderItemSerializer(many=True, read_only=True)
+    table_floor = serializers.IntegerField(source='table.floor', read_only=True)
+    table_info = serializers.SerializerMethodField()
     total_amount = serializers.SerializerMethodField()
     items_count = serializers.SerializerMethodField()
     
     class Meta:
         model = Order
-        fields = ['id', 'table', 'table_name', 'table_number', 'status', 'order_items', 
+        fields = ['id', 'table', 'table_name', 'table_floor', 'table_info', 'status', 
                  'total_amount', 'items_count', 'created_at', 'closed_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
+    
+    def get_table_info(self, obj):
+        """Get detailed table information"""
+        if obj.table:
+            return {
+                'table_id': obj.table.id,
+                'table_name': obj.table.name,
+                'floor': obj.table.floor,
+                'status': obj.table.status
+            }
+        return None
     
     def get_total_amount(self, obj):
         return sum((item.quantity or 0) * (item.price_each or 0) for item in obj.order_items.all())
