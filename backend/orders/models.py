@@ -23,7 +23,7 @@ class Order(models.Model):
 class OrderItem(models.Model):
     STATUS_CHOICES = [
         ('ordered', 'Ordered'),
-        ('cancel', 'Cancelled'),
+        ('cancelled', 'Cancelled'),  # Fixed typo: cancel → cancelled
         ('cooking', 'Cooking'),
         ('done', 'Done'),
     ]
