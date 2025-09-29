@@ -1,19 +1,5 @@
 import api from "./api";
-import type { User } from "../types/user";
-
-export interface CreateUserData {
-  username: string;
-  name: string;
-  role: "admin" | "staff";
-  password: string;
-}
-
-export interface UpdateUserData {
-  username?: string;
-  name?: string;
-  role?: "admin" | "staff";
-  password?: string;
-}
+import type { User, CreateUserData, UpdateUserData } from "../types/user";
 
 export const userService = {
   // Get all users
