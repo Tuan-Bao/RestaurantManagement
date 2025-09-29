@@ -38,6 +38,7 @@ export interface Order {
   updated_at: string;
   order_items?: OrderItem[];
   total_amount?: number;
+  tableName?: string;
 }
 
 export interface OrderItem {
@@ -45,6 +46,7 @@ export interface OrderItem {
   order_id: number;
   menu_item_id: number;
   menu_item?: MenuItem;
+  menu_item_name: string;
   user_id: number;
   quantity: number;
   note?: string;
