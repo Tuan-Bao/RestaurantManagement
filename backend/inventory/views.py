@@ -169,7 +169,7 @@ class StockInListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
-        queryset = StockIn.objects.select_related('ingredient', 'user_id').order_by('-created_at')
+        queryset = StockIn.objects.select_related('ingredient', 'user').order_by('-created_at')
         
         # Filter by ingredient name
         ingredient_name = self.request.query_params.get('ingredient_name')
@@ -236,7 +236,7 @@ class StockInListCreateView(generics.ListCreateAPIView):
                         }, status=status.HTTP_400_BAD_REQUEST)
                     
                     # Create stock-in record
-                    stock_in = serializer.save(user_id=user)
+                    stock_in = serializer.save(user=user)
                     
                     # Update ingredient stock quantity
                     ingredient = stock_in.ingredient
@@ -289,7 +289,7 @@ class StockInDetailView(generics.RetrieveAPIView):
     """
     serializer_class = StockInSerializer
     permission_classes = [IsAuthenticated]
-    queryset = StockIn.objects.select_related('ingredient', 'user_id')
+    queryset = StockIn.objects.select_related('ingredient', 'user')
 
 
 class StockOutListCreateView(generics.ListCreateAPIView):
@@ -301,7 +301,7 @@ class StockOutListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
-        queryset = StockOut.objects.select_related('ingredient', 'user_id').order_by('-created_at')
+        queryset = StockOut.objects.select_related('ingredient', 'user').order_by('-created_at')
         
         # Filter by ingredient name
         ingredient_name = self.request.query_params.get('ingredient_name')
@@ -381,7 +381,7 @@ class StockOutListCreateView(generics.ListCreateAPIView):
                         }, status=status.HTTP_400_BAD_REQUEST)
                     
                     # Create stock-out record
-                    stock_out = serializer.save(user_id=user)
+                    stock_out = serializer.save(user=user)
                     
                     # Update ingredient stock quantity
                     ingredient.stock_quantity = current_stock - requested_quantity
@@ -423,7 +423,7 @@ class StockOutDetailView(generics.RetrieveAPIView):
     """
     serializer_class = StockOutSerializer
     permission_classes = [IsAuthenticated]
-    queryset = StockOut.objects.select_related('ingredient', 'user_id')
+    queryset = StockOut.objects.select_related('ingredient', 'user')
 
 class IngredientDetailView(generics.RetrieveUpdateDestroyAPIView):
     """
