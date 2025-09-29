@@ -6,6 +6,7 @@ app_name = 'accounts'
 urlpatterns = [
     # Authentication endpoints
     path('auth/login/', views.login_view, name='login'),
+    path('auth/logout/', views.logout_view, name='logout'),
     path('auth/profile/', views.ProfileView.as_view(), name='profile'),
     
     # User management endpoints (Admin only)
@@ -14,7 +15,8 @@ urlpatterns = [
 ]
 
 # Authentication:
-# POST /api/auth/login/ - Đăng nhập
+# POST /api/auth/login/ - Đăng nhập (set is_active = True)
+# POST /api/auth/logout/ - Đăng xuất (set is_active = False)
 # GET /api/auth/profile/ - Xem thông tin cá nhân
 # PUT /api/auth/profile/ - Cập nhật thông tin cá nhân
 
