@@ -32,13 +32,15 @@ class OrderSerializer(serializers.ModelSerializer):
     table_name = serializers.CharField(source='table.name', read_only=True)
     table_floor = serializers.IntegerField(source='table.floor', read_only=True)
     table_info = serializers.SerializerMethodField()
+    order_items = OrderItemSerializer(many=True, read_only=True)
     total_amount = serializers.SerializerMethodField()
     items_count = serializers.SerializerMethodField()
+    items_by_status = serializers.SerializerMethodField()
     
     class Meta:
         model = Order
-        fields = ['id', 'table', 'table_name', 'table_floor', 'table_info', 'status', 
-                 'total_amount', 'items_count', 'created_at', 'closed_at', 'updated_at']
+        fields = ['id', 'table', 'table_name', 'table_floor', 'table_info', 'status', 'order_items', 
+                 'total_amount', 'items_count', 'items_by_status', 'created_at', 'closed_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
     
     def get_table_info(self, obj):
@@ -57,6 +59,17 @@ class OrderSerializer(serializers.ModelSerializer):
     
     def get_items_count(self, obj):
         return obj.order_items.count()
+    
+    def get_items_by_status(self, obj):
+        """Group items by status for easy tracking"""
+        items = obj.order_items.all()
+        status_count = {}
+        for item in items:
+            status = item.status or 'ordered'
+            if status not in status_count:
+                status_count[status] = 0
+            status_count[status] += item.quantity or 0
+        return status_count
 
 class OrderCreateSerializer(serializers.ModelSerializer):
     items = OrderItemCreateSerializer(many=True, write_only=True)
