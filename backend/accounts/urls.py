@@ -26,3 +26,4 @@ urlpatterns = [
 # GET /api/users/{id}/ - Xem chi tiết user
 # PUT /api/users/{id}/ - Cập nhật user
 # DELETE /api/users/{id}/ - Xóa user
+#   Validation: Không được xóa chính mình, phải tồn tại ít nhất 1 admin

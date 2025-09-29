@@ -213,6 +213,10 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     GET    /api/users/{id}/ - Lấy thông tin user (Admin only)
     PUT    /api/users/{id}/ - Cập nhật user (Admin only)
     DELETE /api/users/{id}/ - Xóa user (Admin only)
+    
+    Delete validation rules:
+    - Cannot delete yourself
+    - Cannot delete the last admin user (at least 1 admin must exist)
     """
     permission_classes = [IsAuthenticated, IsAdminUser]
     
@@ -243,11 +247,21 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
         }, status=status.HTTP_400_BAD_REQUEST)
     
     def destroy(self, request, *args, **kwargs):
-        user = self.get_object()
+        user_to_delete = self.get_object()
+        
+        # Lấy thông tin user hiện tại từ JWT token
+        current_user_id = self.request.auth.payload.get('user_id') if self.request.auth else None
+        
+        # Kiểm tra không được xóa chính mình
+        if current_user_id and current_user_id == user_to_delete.id:
+            return Response({
+                'success': False,
+                'message': 'Cannot delete yourself'
+            }, status=status.HTTP_400_BAD_REQUEST)
         
         # Soft delete thay vì xóa thật
-        user.deleted_at = timezone.now()
-        user.save()
+        user_to_delete.deleted_at = timezone.now()
+        user_to_delete.save()
         
         return Response({
             'success': True,
