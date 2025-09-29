@@ -128,11 +128,32 @@ class UserListCreateView(generics.ListCreateAPIView):
     """
     GET  /api/users/ - Lấy danh sách users (Admin only)
     POST /api/users/ - Tạo user mới (Admin only)
+    Query parameters:
+    - name: Lọc user theo tên (tìm kiếm gần đúng)
+    - username: Lọc user theo username (tìm kiếm gần đúng)
+    - role: Lọc user theo role (admin/staff)
     """
     permission_classes = [IsAuthenticated, IsAdminUser]
     
     def get_queryset(self):
-        return User.objects.filter(deleted_at__isnull=True).order_by('-created_at')
+        queryset = User.objects.filter(deleted_at__isnull=True).order_by('-created_at')
+        
+        # Lọc theo tên nếu có query parameter
+        name_query = self.request.query_params.get('name', None)
+        if name_query:
+            queryset = queryset.filter(name__icontains=name_query)
+        
+        # Lọc theo username nếu có query parameter
+        username_query = self.request.query_params.get('username', None)
+        if username_query:
+            queryset = queryset.filter(username__icontains=username_query)
+        
+        # Lọc theo role nếu có query parameter
+        role_query = self.request.query_params.get('role', None)
+        if role_query and role_query in ['admin', 'staff']:
+            queryset = queryset.filter(role=role_query)
+            
+        return queryset
     
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -143,11 +164,31 @@ class UserListCreateView(generics.ListCreateAPIView):
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
         
-        return Response({
+        # Thông tin về filter
+        name_query = self.request.query_params.get('name', None)
+        username_query = self.request.query_params.get('username', None)
+        role_query = self.request.query_params.get('role', None)
+        
+        response_data = {
             'success': True,
             'data': serializer.data,
-            'count': queryset.count()
-        })
+            'count': queryset.count(),
+            'total_users': User.objects.filter(deleted_at__isnull=True).count()
+        }
+        
+        # Thêm thông tin filter nếu có
+        filter_info = {}
+        if name_query:
+            filter_info['name'] = name_query
+        if username_query:
+            filter_info['username'] = username_query
+        if role_query and role_query in ['admin', 'staff']:
+            filter_info['role'] = role_query
+            
+        if filter_info:
+            response_data['filter'] = filter_info
+        
+        return Response(response_data)
     
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
