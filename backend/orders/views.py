@@ -432,3 +432,50 @@ def order_stats_view(request):
         'message': 'Retrieved order statistics successfully',
         'data': stats
     })
+
+class OrderItemListView(generics.ListAPIView):
+    """
+    GET /api/order-items/?order=...&status=...&menu_item=... - Danh sách món trong orders
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = OrderItemSerializer
+    
+    def get_queryset(self):
+        queryset = OrderItem.objects.select_related(
+            'order__table', 'menu_item', 'user'
+        ).order_by('-created_at')
+        
+        # Filter by order
+        order_id = self.request.query_params.get('order')
+        if order_id:
+            queryset = queryset.filter(order_id=order_id)
+        
+        # Filter by status
+        status_param = self.request.query_params.get('status')
+        if status_param:
+            queryset = queryset.filter(status=status_param)
+        
+        # Filter by menu item
+        menu_item = self.request.query_params.get('menu_item')
+        if menu_item:
+            queryset = queryset.filter(menu_item_id=menu_item)
+        
+        # Filter by table floor
+        floor = self.request.query_params.get('floor')
+        if floor:
+            try:
+                floor_int = int(floor)
+                queryset = queryset.filter(order__table__floor=floor_int)
+            except (ValueError, TypeError):
+                pass
+        
+        return queryset
+    
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({
+            'success': True,
+            'data': serializer.data,
+            'total': queryset.count()
+        })
