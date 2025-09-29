@@ -6,6 +6,7 @@ from rest_framework.views import APIView
 from django.db.models import Q, Sum
 from django.utils import timezone
 from django.db import transaction
+from datetime import datetime, timedelta
 
 from .models import Order, OrderItem, Payment
 from .serializers import (
@@ -19,13 +20,15 @@ from menu.models import MenuItem
 # ===== ORDER VIEWS =====
 class OrderListCreateView(generics.ListCreateAPIView):
     """
-    GET  /api/orders/?table=...&status=... - Danh sách đơn hàng
+    GET  /api/orders/?table=...&status=...&floor=...&date_from=...&date_to=... - Danh sách đơn hàng + lịch sử
     POST /api/orders/                      - Tạo đơn hàng mới + thêm món
     """
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
-        queryset = Order.objects.all().order_by('-created_at')
+        queryset = Order.objects.select_related('table').prefetch_related(
+            'order_items__menu_item', 'order_items__user'
+        ).order_by('-created_at')
         
         # Filter by table
         table = self.request.query_params.get('table')
@@ -36,6 +39,38 @@ class OrderListCreateView(generics.ListCreateAPIView):
         status_param = self.request.query_params.get('status')
         if status_param:
             queryset = queryset.filter(status=status_param)
+            
+        # Filter by floor (through table)
+        floor = self.request.query_params.get('floor')
+        if floor:
+            try:
+                floor_int = int(floor)
+                queryset = queryset.filter(table__floor=floor_int)
+            except (ValueError, TypeError):
+                pass
+        
+        # Filter by date range
+        date_from = self.request.query_params.get('date_from')
+        date_to = self.request.query_params.get('date_to')
+        
+        if date_from:
+            try:
+                from_date = datetime.strptime(date_from, '%Y-%m-%d')
+                queryset = queryset.filter(created_at__date__gte=from_date.date())
+            except ValueError:
+                pass
+        
+        if date_to:
+            try:
+                to_date = datetime.strptime(date_to, '%Y-%m-%d')
+                queryset = queryset.filter(created_at__date__lte=to_date.date())
+            except ValueError:
+                pass
+        
+        # Filter by table name (search)
+        table_name = self.request.query_params.get('table_name')
+        if table_name:
+            queryset = queryset.filter(table__name__icontains=table_name)
         
         return queryset
     
