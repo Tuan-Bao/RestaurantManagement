@@ -108,6 +108,38 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         
         return order
 
+class OrderItemStatusUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for updating order item status only"""
+    
+    class Meta:
+        model = OrderItem
+        fields = ['status']
+    
+    def validate_status(self, value):
+        """Validate status transitions"""
+        if not value:
+            raise serializers.ValidationError("Status is required")
+        
+        # Get current status if updating existing item
+        if self.instance:
+            current_status = self.instance.status
+            
+            # Define allowed status transitions
+            allowed_transitions = {
+                'ordered': ['cooking', 'cancel'],
+                'cooking': ['done', 'cancel'],
+                'done': [],  # Final state
+                'cancel': []  # Final state
+            }
+            
+            if current_status in allowed_transitions:
+                if value not in allowed_transitions[current_status]:
+                    raise serializers.ValidationError(
+                        f"Cannot change status from '{current_status}' to '{value}'"
+                    )
+        
+        return value
+
 class PaymentSerializer(serializers.ModelSerializer):
     order_id = serializers.IntegerField(source='order.id', read_only=True)
     final_amount = serializers.SerializerMethodField()
