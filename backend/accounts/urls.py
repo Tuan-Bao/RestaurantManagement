@@ -24,6 +24,7 @@ urlpatterns = [
 #   Ví dụ: /api/users/?name=Nguyen&role=staff
 # POST /api/users/ - Tạo user mới
 # GET /api/users/{id}/ - Xem chi tiết user
-# PUT /api/users/{id}/ - Cập nhật user
+# PUT /api/users/{id}/ - Cập nhật user hoàn toàn
+# PATCH /api/users/{id}/ - Cập nhật một phần user (bao gồm password)
 # DELETE /api/users/{id}/ - Xóa user
 #   Validation: Không được xóa chính mình, phải tồn tại ít nhất 1 admin
