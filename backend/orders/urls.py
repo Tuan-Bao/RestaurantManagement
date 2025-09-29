@@ -12,6 +12,7 @@ urlpatterns = [
     # Order Items endpoints
     path('<int:order_id>/items/', views.OrderItemBulkUpdateView.as_view(), name='order-item-bulk-update'),
     path('items/', views.OrderItemListView.as_view(), name='order-item-list'),
+    path('items/<int:pk>/status/', views.OrderItemStatusUpdateView.as_view(), name='order-item-status-update'),
     path('items/<int:pk>/', views.OrderItemDeleteView.as_view(), name='order-item-delete'),
     
     # Payment endpoints
@@ -32,6 +33,7 @@ urlpatterns = [
 
 # 🍽️ ORDER ITEMS APIs:
 # GET    /api/orders/items/?order=...&status=...&menu_item=...&floor=...  - Danh sách món trong orders
+# PATCH  /api/orders/items/{id}/status/       - Cập nhật trạng thái món (ordered→cooking→done/cancel)
 
 # 💰 PAYMENT APIs:
 # GET    /api/orders/{order_id}/payments/     - Danh sách thanh toán của order

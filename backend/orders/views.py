@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from .models import Order, OrderItem, Payment
 from .serializers import (
     OrderSerializer, OrderCreateSerializer,
-    OrderItemSerializer, OrderItemCreateSerializer,
+    OrderItemSerializer, OrderItemCreateSerializer, OrderItemStatusUpdateSerializer,
     PaymentSerializer, PaymentCreateSerializer
 )
 from tables.models import Table
@@ -432,6 +432,35 @@ def order_stats_view(request):
         'message': 'Retrieved order statistics successfully',
         'data': stats
     })
+
+# ===== ORDER ITEM STATUS UPDATE =====
+class OrderItemStatusUpdateView(generics.UpdateAPIView):
+    """
+    PATCH /api/order-items/{id}/status/ - Cập nhật trạng thái món trong order
+    """
+    queryset = OrderItem.objects.all()
+    permission_classes = [IsAuthenticated]
+    serializer_class = OrderItemStatusUpdateSerializer
+    
+    def partial_update(self, request, *args, **kwargs):
+        order_item = self.get_object()
+        old_status = order_item.status
+        
+        serializer = self.get_serializer(order_item, data=request.data, partial=True)
+        if serializer.is_valid():
+            updated_item = serializer.save()
+            
+            return Response({
+                'success': True,
+                'message': f'Updated order item status from "{old_status}" to "{updated_item.status}"',
+                'data': OrderItemSerializer(updated_item).data
+            })
+        
+        return Response({
+            'success': False,
+            'message': 'Update order item status failed',
+            'errors': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
 
 class OrderItemListView(generics.ListAPIView):
     """
