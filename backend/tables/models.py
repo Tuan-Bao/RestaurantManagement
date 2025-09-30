@@ -23,31 +23,3 @@ class Table(models.Model):
 
     class Meta:
         db_table = 'tables'
-
-
-class TableMerge(models.Model):
-    """Model to track table merging operations"""
-    main_table = models.ForeignKey(Table, on_delete=models.CASCADE, related_name='main_merges', 
-                                  help_text='Main table that other tables are merged into')
-    merged_tables = models.ManyToManyField(Table, related_name='merged_into', 
-                                         help_text='Tables that are merged into the main table')
-    created_by = models.ForeignKey('accounts.User', on_delete=models.CASCADE, 
-                                  related_name='table_merges')
-    created_at = models.DateTimeField(auto_now_add=True)
-    separated_at = models.DateTimeField(null=True, blank=True, help_text='When tables were separated')
-    separated_by = models.ForeignKey('accounts.User', on_delete=models.CASCADE, 
-                                   related_name='table_separations', null=True, blank=True)
-    is_active = models.BooleanField(default=True, help_text='Whether the merge is currently active')
-    
-    def __str__(self):
-        merged_names = ', '.join([t.name for t in self.merged_tables.all()])
-        return f"Merged: {merged_names} → {self.main_table.name}"
-    
-    @property
-    def total_tables_count(self):
-        """Total number of tables in this merge (including main table)"""
-        return self.merged_tables.count() + 1
-    
-    class Meta:
-        db_table = 'table_merges'
-        ordering = ['-created_at']
