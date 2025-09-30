@@ -178,34 +178,7 @@ const AdminMenuItemCard: React.FC<AdminMenuItemCardProps> = ({
                                     onClick={() => onEdit(item)}
                                 >
                                     <i className="bi bi-pencil me-2"></i>
-                                    Chỉnh sửa món ăn
-                                </button>
-                            </li>
-                            <li>
-                                <button
-                                    className="dropdown-item"
-                                    onClick={() => onToggleAvailability(item.id)}
-                                >
-                                    <i
-                                        className={`bi ${item.isAvailable ? "bi-pause-circle" : "bi-play-circle"
-                                            } me-2`}
-                                    ></i>
-                                    {item.isAvailable ? "Đánh dấu hết món" : "Đánh dấu có sẵn"}
-                                </button>
-                            </li>
-                            <li>
-                                <hr className="dropdown-divider" />
-                            </li>
-                            <li>
-                                <button className="dropdown-item">
-                                    <i className="bi bi-files me-2"></i>
-                                    Nhân bản món ăn
-                                </button>
-                            </li>
-                            <li>
-                                <button className="dropdown-item">
-                                    <i className="bi bi-printer me-2"></i>
-                                    In thông tin món
+                                    Chỉnh sửa thông tin
                                 </button>
                             </li>
                             <li>
