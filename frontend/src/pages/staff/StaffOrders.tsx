@@ -300,7 +300,7 @@ const StaffOrders: React.FC = () => {
             const updatedItems = order.items.filter(item => item.id !== itemId);
             // Tính lại tổng tiền sau khi xóa món
             const newTotalAmount = updatedItems.reduce((sum, item) => sum + item.totalPrice, 0);
-            
+
             return {
               ...order,
               items: updatedItems,
@@ -379,9 +379,8 @@ const StaffOrders: React.FC = () => {
               <p className="text-muted">
                 {activeFloor === 0
                   ? "Chưa có đơn hàng nào trong hệ thống."
-                  : `Không có đơn hàng nào trong ${
-                      floors.find(f => f.id === activeFloor)?.name
-                    }.`}
+                  : `Không có đơn hàng nào trong ${floors.find(f => f.id === activeFloor)?.name
+                  }.`}
               </p>
               <button className="btn btn-primary">
                 <i className="bi bi-plus me-2"></i>
