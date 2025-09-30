@@ -188,20 +188,9 @@ const OrderCard: React.FC<OrderCardProps> = ({
           </div>
         </div>
 
-        {/* Customer & Total */}
+        {/* Total */}
         <div className="row mt-3">
-          <div className="col-sm-6">
-            {order.customerName && (
-              <>
-                <small className="text-muted d-block">Khách hàng</small>
-                <small className="fw-bold">
-                  <i className="bi bi-person me-1"></i>
-                  {order.customerName}
-                </small>
-              </>
-            )}
-          </div>
-          <div className="col-sm-6 text-end">
+          <div className="col-12 text-end">
             <small className="text-muted d-block">Tổng tiền</small>
             <strong className="text-primary fs-6">
               {order.totalAmount.toLocaleString("vi-VN")}đ

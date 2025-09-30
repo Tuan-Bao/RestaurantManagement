@@ -25,14 +25,13 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
       filtered = filtered.filter(order => order.status === newFilters.status);
     }
 
-    // Filter by search (order number, table name, customer name)
+    // Filter by search (order number, table name)
     if (newFilters.search.trim()) {
       const searchLower = newFilters.search.toLowerCase().trim();
       filtered = filtered.filter(
         order =>
           order.orderNumber.toLowerCase().includes(searchLower) ||
           order.tableName.toLowerCase().includes(searchLower) ||
-          order.customerName?.toLowerCase().includes(searchLower) ||
           order.items.some(item =>
             item.menuItemName.toLowerCase().includes(searchLower)
           )
@@ -176,7 +175,7 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
             <input
               type="text"
               className="form-control"
-              placeholder="Số đơn, bàn, khách hàng, món..."
+              placeholder="Số đơn, bàn, món..."
               value={filters.search}
               onChange={e => handleFilterChange("search", e.target.value)}
             />
@@ -187,8 +186,8 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
         <div className="d-flex flex-wrap gap-2">
           <button
             className={`btn btn-sm ${filters.status === "active"
-                ? "btn-success"
-                : "btn-outline-success"
+              ? "btn-success"
+              : "btn-outline-success"
               }`}
             onClick={() =>
               handleFilterChange(
