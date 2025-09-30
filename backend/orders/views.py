@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 
 from .models import Order, OrderItem, Payment
 from .serializers import (
-    OrderSerializer, OrderCreateSerializer,
+    OrderSerializer, OrderCreateSerializer, OrderHistorySerializer,
     OrderItemSerializer, OrderItemCreateSerializer, OrderItemStatusUpdateSerializer,
     PaymentSerializer, PaymentCreateSerializer
 )
@@ -26,9 +26,12 @@ class OrderListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
-        queryset = Order.objects.select_related('table').prefetch_related(
-            'order_items__menu_item', 'order_items__user'
-        ).order_by('-created_at')
+        queryset = Order.objects.select_related('table', 'user').prefetch_related(
+            'order_items__menu_item'
+        )
+        
+        # Custom ordering: floor (asc) → table_name (asc) → order_id (desc)
+        queryset = queryset.order_by('table__floor', 'table__name', '-id')
         
         # Filter by table
         table = self.request.query_params.get('table')
@@ -77,7 +80,8 @@ class OrderListCreateView(generics.ListCreateAPIView):
     def get_serializer_class(self):
         if self.request.method == 'POST':
             return OrderCreateSerializer
-        return OrderSerializer
+        # Use OrderHistorySerializer for list view (history)
+        return OrderHistorySerializer
     
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
@@ -95,7 +99,7 @@ class OrderListCreateView(generics.ListCreateAPIView):
             return Response({
                 'success': True,
                 'message': 'Created order successfully',
-                'data': OrderSerializer(order).data
+                'data': OrderSerializer(order).data  # Use detailed serializer for response
             }, status=status.HTTP_201_CREATED)
         return Response({
             'success': False,
@@ -241,7 +245,6 @@ class OrderItemBulkUpdateView(APIView):
                     order_item = OrderItem.objects.create(
                         order=order,
                         menu_item=menu_item,
-                        user=request.user,
                         quantity=item_data.get('quantity', 1),
                         note=item_data.get('note', ''),
                         price_each=menu_item.price,
@@ -260,46 +263,6 @@ class OrderItemBulkUpdateView(APIView):
             'added': added,
             'removed': removed,
             'errors': errors if errors else None
-        })
-
-class OrderItemStatusUpdateView(generics.UpdateAPIView):
-    """
-    PATCH /api/orders/items/{id}/status/ - Cập nhật trạng thái món
-    """
-    queryset = OrderItem.objects.all()
-    permission_classes = [IsAuthenticated]
-    
-    def update(self, request, *args, **kwargs):
-        order_item = self.get_object()
-        
-        if order_item.order.status == 'paid':
-            return Response({
-                'success': False,
-                'message': 'Cannot update item in paid order'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        status_value = request.data.get('status')
-        if not status_value:
-            return Response({
-                'success': False,
-                'message': 'Status is required'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Validate status values
-        valid_statuses = ['ordered', 'cooking', 'done', 'cancelled']
-        if status_value not in valid_statuses:
-            return Response({
-                'success': False,
-                'message': f'Invalid status. Must be one of: {", ".join(valid_statuses)}'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        order_item.status = status_value
-        order_item.save()
-        
-        return Response({
-            'success': True,
-            'message': 'Updated order item status successfully',
-            'data': OrderItemSerializer(order_item).data
         })
 
 class OrderItemDeleteView(generics.DestroyAPIView):
@@ -436,31 +399,44 @@ def order_stats_view(request):
 # ===== ORDER ITEM STATUS UPDATE =====
 class OrderItemStatusUpdateView(generics.UpdateAPIView):
     """
-    PATCH /api/order-items/{id}/status/ - Cập nhật trạng thái món trong order
+    PATCH /api/orders/items/{id}/status/ - Cập nhật trạng thái món
     """
     queryset = OrderItem.objects.all()
     permission_classes = [IsAuthenticated]
-    serializer_class = OrderItemStatusUpdateSerializer
     
-    def partial_update(self, request, *args, **kwargs):
+    def update(self, request, *args, **kwargs):
         order_item = self.get_object()
-        old_status = order_item.status
         
-        serializer = self.get_serializer(order_item, data=request.data, partial=True)
-        if serializer.is_valid():
-            updated_item = serializer.save()
-            
+        if order_item.order.status == 'paid':
             return Response({
-                'success': True,
-                'message': f'Updated order item status from "{old_status}" to "{updated_item.status}"',
-                'data': OrderItemSerializer(updated_item).data
-            })
+                'success': False,
+                'message': 'Cannot update item in paid order'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        status_value = request.data.get('status')
+        if not status_value:
+            return Response({
+                'success': False,
+                'message': 'Status is required'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Validate status values
+        valid_statuses = ['ordered', 'cooking', 'done', 'cancelled']
+        if status_value not in valid_statuses:
+            return Response({
+                'success': False,
+                'message': f'Invalid status. Must be one of: {", ".join(valid_statuses)}'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        old_status = order_item.status
+        order_item.status = status_value
+        order_item.save()
         
         return Response({
-            'success': False,
-            'message': 'Update order item status failed',
-            'errors': serializer.errors
-        }, status=status.HTTP_400_BAD_REQUEST)
+            'success': True,
+            'message': f'Updated order item status from "{old_status}" to "{status_value}"',
+            'data': OrderItemSerializer(order_item).data
+        })
 
 class OrderItemListView(generics.ListAPIView):
     """
@@ -471,7 +447,7 @@ class OrderItemListView(generics.ListAPIView):
     
     def get_queryset(self):
         queryset = OrderItem.objects.select_related(
-            'order__table', 'menu_item', 'user'
+            'order__table', 'menu_item'
         ).order_by('-created_at')
         
         # Filter by order
