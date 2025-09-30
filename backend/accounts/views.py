@@ -179,7 +179,7 @@ class UserListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
     
     def get_queryset(self):
-        queryset = User.objects.filter(deleted_at__isnull=True).order_by('-created_at')
+        queryset = User.objects.filter(deleted_at__isnull=True).order_by('id')
         
         # Lọc theo tên nếu có query parameter
         name_query = self.request.query_params.get('name', None)
@@ -195,7 +195,11 @@ class UserListCreateView(generics.ListCreateAPIView):
         role_query = self.request.query_params.get('role', None)
         if role_query and role_query in ['admin', 'staff']:
             queryset = queryset.filter(role=role_query)
-            
+        
+        # Lọc theo is_active nếu có query parameter
+        is_active_query = self.request.query_params.get('is_active', None)
+        if is_active_query and is_active_query in ['true', 'false']:
+            queryset = queryset.filter(is_active=is_active_query == 'true')
         return queryset
     
     def get_serializer_class(self):

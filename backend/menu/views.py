@@ -126,7 +126,7 @@ class CategoryDetailView(generics.RetrieveUpdateDestroyAPIView):
 # ===== MENUITEM VIEWS =====
 class MenuItemListCreateView(generics.ListCreateAPIView):
     """
-    GET  /api/menu/items/?name=...&category=...&status=... - Danh sách món ăn
+    GET  /api/menu/items/?name=...&category_id=...&status=... - Danh sách món ăn
     POST /api/menu/items/                                  - Tạo món ăn mới (Admin only)
     """
     def get_queryset(self):
@@ -138,16 +138,16 @@ class MenuItemListCreateView(generics.ListCreateAPIView):
             queryset = queryset.filter(name__icontains=name)
         
         # Filter by category
-        category = self.request.query_params.get('category')
-        if category:
-            queryset = queryset.filter(category=category)
-        
+        category_id = self.request.query_params.get('category_id')
+        if category_id:
+            queryset = queryset.filter(category_id=category_id)
+
         # Filter by status
         status_param = self.request.query_params.get('status')
         if status_param:
             queryset = queryset.filter(status=status_param)
         
-        return queryset.order_by('category__name', 'name')
+        return queryset.order_by('id')
     
     def get_serializer_class(self):
         if self.request.method == 'POST':
@@ -434,12 +434,32 @@ class RecipeBulkUpdateView(APIView):
                 removed.append(recipe.ingredient_id)
         # Add new ingredients
         for ing_id in incoming_ingredients - current_ingredients:
-            recipe = Recipe.objects.create(
+            # recipe = Recipe.objects.create(
+            #     menu_item=menu_item,
+            #     ingredient_id=ing_id,
+            #     quantity_required=incoming[ing_id]
+            # )
+            # added.append(RecipeSerializer(recipe).data)
+             # Kiểm tra nếu đã từng có recipe bị xóa mềm
+            old_recipe = Recipe.objects.filter(
                 menu_item=menu_item,
                 ingredient_id=ing_id,
-                quantity_required=incoming[ing_id]
-            )
-            added.append(RecipeSerializer(recipe).data)
+                deleted_at__isnull=False
+            ).first()
+            if old_recipe:
+                # Khôi phục lại và cập nhật số lượng
+                old_recipe.deleted_at = None
+                old_recipe.quantity_required = incoming[ing_id]
+                old_recipe.save()
+                added.append(RecipeSerializer(old_recipe).data)
+            else:
+                # Tạo mới nếu chưa từng có
+                recipe = Recipe.objects.create(
+                    menu_item=menu_item,
+                    ingredient_id=ing_id,
+                    quantity_required=incoming[ing_id]
+                )
+                added.append(RecipeSerializer(recipe).data)
         return Response({
             'success': True,
             'message': 'Bulk updated recipe',
