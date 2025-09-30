@@ -295,7 +295,7 @@ const StaffOrders: React.FC = () => {
 
   return (
     <StaffLayout>
-      <div className="d-flex justify-content-between align-items-center mb-4">
+      <div className="mb-4">
         <div>
           <h2 className="mb-1">
             <i className="bi bi-cart me-2"></i>
@@ -304,21 +304,6 @@ const StaffOrders: React.FC = () => {
           <p className="text-muted mb-0">
             Theo dõi và cập nhật trạng thái các đơn hàng trong nhà hàng
           </p>
-        </div>
-
-        <div className="d-flex gap-2">
-          <button className="btn btn-outline-primary">
-            <i className="bi bi-arrow-clockwise me-1"></i>
-            Làm mới
-          </button>
-          <button className="btn btn-success">
-            <i className="bi bi-plus me-1"></i>
-            Tạo đơn mới
-          </button>
-          <button className="btn btn-info">
-            <i className="bi bi-printer me-1"></i>
-            In báo cáo
-          </button>
         </div>
       </div>
 
