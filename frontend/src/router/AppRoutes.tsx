@@ -3,6 +3,7 @@ import { useAuth } from "../hooks/useAuth";
 import Loading from "../components/shared/Loading";
 import Login from "../pages/Login";
 import AdminDashboard from "../pages/admin/AdminDashboard";
+import AdminMenu from "../pages/admin/AdminMenu";
 import StaffDashboard from "../pages/staff/StaffDashboard";
 import StaffTables from "../pages/staff/StaffTables";
 import StaffOrders from "../pages/staff/StaffOrders";
@@ -28,6 +29,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute requiredRole="admin">
             <AdminDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/menu"
+        element={
+          <ProtectedRoute requiredRole="admin">
+            <AdminMenu />
           </ProtectedRoute>
         }
       />
