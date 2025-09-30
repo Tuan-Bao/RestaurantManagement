@@ -10,12 +10,14 @@ interface OrderCardProps {
     status: OrderItem["status"]
   ) => void;
   onOrderStatusChange: (orderId: number, status: Order["status"]) => void;
+  onItemDelete: (orderId: number, itemId: number) => void;
 }
 
 const OrderCard: React.FC<OrderCardProps> = ({
   order,
   onItemStatusChange,
   onOrderStatusChange,
+  onItemDelete,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -69,6 +71,10 @@ const OrderCard: React.FC<OrderCardProps> = ({
     status: OrderItem["status"]
   ) => {
     onItemStatusChange(order.id, itemId, status);
+  };
+
+  const handleItemDelete = (itemId: number) => {
+    onItemDelete(order.id, itemId);
   };
 
   const getTimeInfo = () => {
@@ -226,6 +232,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
               key={item.id}
               item={item}
               onStatusChange={handleItemStatusChange}
+              onItemDelete={handleItemDelete}
             />
           ))}
 

@@ -291,6 +291,31 @@ const StaffOrders: React.FC = () => {
     alert(statusMessages[newStatus]);
   };
 
+  const handleItemDelete = (orderId: number, itemId: number) => {
+    setFloors(prevFloors =>
+      prevFloors.map(floor => ({
+        ...floor,
+        orders: floor.orders.map(order => {
+          if (order.id === orderId) {
+            const updatedItems = order.items.filter(item => item.id !== itemId);
+            // Tính lại tổng tiền sau khi xóa món
+            const newTotalAmount = updatedItems.reduce((sum, item) => sum + item.totalPrice, 0);
+            
+            return {
+              ...order,
+              items: updatedItems,
+              totalAmount: newTotalAmount,
+              updatedAt: new Date().toISOString(),
+            };
+          }
+          return order;
+        }),
+      }))
+    );
+
+    alert("Đã xóa món khỏi đơn hàng thành công");
+  };
+
   const currentOrders = getCurrentOrders();
 
   return (
@@ -343,6 +368,7 @@ const StaffOrders: React.FC = () => {
                   order={order}
                   onItemStatusChange={handleItemStatusChange}
                   onOrderStatusChange={handleOrderStatusChange}
+                  onItemDelete={handleItemDelete}
                 />
               ))}
             </div>
