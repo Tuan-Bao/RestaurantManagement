@@ -4,11 +4,13 @@ import type { OrderItem } from "../../types/order";
 interface OrderItemCardProps {
   item: OrderItem;
   onStatusChange: (itemId: number, status: OrderItem["status"]) => void;
+  onItemDelete: (itemId: number) => void;
 }
 
 const OrderItemCard: React.FC<OrderItemCardProps> = ({
   item,
   onStatusChange,
+  onItemDelete,
 }) => {
   const getStatusBadge = (status: OrderItem["status"]) => {
     const statusConfig = {
@@ -108,55 +110,18 @@ const OrderItemCard: React.FC<OrderItemCardProps> = ({
             </button>
           )}
 
-          {item.status !== "served" && (
-            <div className="dropdown">
-              <button
-                className="btn btn-sm btn-outline-secondary dropdown-toggle"
-                type="button"
-                data-bs-toggle="dropdown"
-              >
-                <i className="bi bi-gear me-1"></i>
-                Thao tác
-              </button>
-              <ul className="dropdown-menu">
-                <li>
-                  <button
-                    className="dropdown-item"
-                    onClick={() => onStatusChange(item.id, "pending")}
-                  >
-                    <i className="bi bi-arrow-counterclockwise me-2"></i>
-                    Đặt lại chờ xử lý
-                  </button>
-                </li>
-                <li>
-                  <button
-                    className="dropdown-item"
-                    onClick={() => onStatusChange(item.id, "preparing")}
-                  >
-                    <i className="bi bi-hourglass-split me-2"></i>
-                    Đặt đang làm
-                  </button>
-                </li>
-                <li>
-                  <button
-                    className="dropdown-item"
-                    onClick={() => onStatusChange(item.id, "ready")}
-                  >
-                    <i className="bi bi-check-circle me-2"></i>
-                    Đặt sẵn sàng
-                  </button>
-                </li>
-                <li>
-                  <button
-                    className="dropdown-item"
-                    onClick={() => onStatusChange(item.id, "served")}
-                  >
-                    <i className="bi bi-check-circle-fill me-2"></i>
-                    Đặt đã phục vụ
-                  </button>
-                </li>
-              </ul>
-            </div>
+          {item.status === "pending" && (
+            <button
+              className="btn btn-sm btn-outline-danger"
+              onClick={() => {
+                if (confirm(`Bạn có chắc chắn muốn xóa món "${item.menuItemName}" khỏi đơn hàng?`)) {
+                  onItemDelete(item.id);
+                }
+              }}
+            >
+              <i className="bi bi-trash me-1"></i>
+              Xóa món
+            </button>
           )}
         </div>
       </div>
