@@ -12,15 +12,15 @@ class PaymentInline(admin.TabularInline):
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ['id', 'table', 'status', 'created_at', 'closed_at']
+    list_display = ['id', 'table', 'user', 'status', 'created_at', 'closed_at']
     list_filter = ['status', 'created_at']
-    search_fields = ['table__name', 'table__number']
+    search_fields = ['table__name', 'table__number', 'user__name']
     ordering = ['-created_at']
     inlines = [OrderItemInline, PaymentInline]
     
     fieldsets = (
         ('Order Information', {
-            'fields': ('table', 'status')
+            'fields': ('table', 'user', 'status')
         }),
         ('Timestamps', {
             'fields': ('created_at', 'closed_at', 'updated_at'),
@@ -32,9 +32,9 @@ class OrderAdmin(admin.ModelAdmin):
 
 @admin.register(OrderItem)
 class OrderItemAdmin(admin.ModelAdmin):
-    list_display = ['order', 'menu_item', 'user', 'quantity', 'status', 'price_each', 'created_at']
+    list_display = ['order', 'menu_item', 'quantity', 'status', 'price_each', 'created_at']
     list_filter = ['status', 'created_at']
-    search_fields = ['menu_item__name', 'user__name', 'order__id']
+    search_fields = ['menu_item__name', 'order__id']
     ordering = ['-created_at']
 
 @admin.register(Payment)

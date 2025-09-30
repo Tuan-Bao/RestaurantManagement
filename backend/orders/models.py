@@ -9,6 +9,7 @@ class Order(models.Model):
     ]
     
     table = models.ForeignKey(Table, on_delete=models.CASCADE, null=True, blank=True, related_name='orders')
+    user = models.ForeignKey('accounts.User', on_delete=models.CASCADE, null=True, blank=True, related_name='orders')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='unpaid', null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     closed_at = models.DateTimeField(null=True, blank=True)
@@ -30,7 +31,6 @@ class OrderItem(models.Model):
     
     order = models.ForeignKey(Order, on_delete=models.CASCADE, null=True, blank=True, related_name='order_items')
     menu_item = models.ForeignKey(MenuItem, on_delete=models.CASCADE, null=True, blank=True, related_name='order_items')
-    user = models.ForeignKey('accounts.User', on_delete=models.CASCADE, null=True, blank=True, related_name='order_items')
     quantity = models.IntegerField(null=True, blank=True)
     note = models.TextField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ordered', null=True, blank=True)
