@@ -1,44 +1,52 @@
 from rest_framework import serializers
 from .models import Ingredient, StockIn, StockOut
-from menu.models import Recipe
-from menu.serializers import MenuItemSerializer
+from accounts.serializers import UserSerializer
 
 
 class IngredientSerializer(serializers.ModelSerializer):
+    """Serializer cho kho nguyên liệu (chỉ đọc)"""
     is_low_stock = serializers.ReadOnlyField()
-    total_value = serializers.ReadOnlyField()
     
     class Meta:
         model = Ingredient
         fields = [
             'id', 'name', 'unit', 'stock_quantity', 'min_quantity', 
-            'price_per_unit', 'status', 'is_low_stock', 'total_value',
+            'price_per_unit', 'status', 'is_low_stock',
             'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'is_low_stock', 'total_value', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'is_low_stock', 'created_at', 'updated_at']
 
 
-class IngredientCreateUpdateSerializer(serializers.ModelSerializer):
-    """Serializer for creating/updating ingredients (excludes stock_quantity)"""
+class StockInCreateSerializer(serializers.ModelSerializer):
+    """Serializer cho nhập kho - có thể tạo nguyên liệu mới hoặc cập nhật nguyên liệu có sẵn"""
+    # Thông tin nguyên liệu
+    ingredient_name = serializers.CharField(max_length=200, help_text="Tên nguyên liệu")
+    ingredient_unit = serializers.ChoiceField(
+        choices=Ingredient.UNIT_CHOICES, 
+        help_text="Đơn vị tính"
+    )
+    min_quantity = serializers.DecimalField(
+        max_digits=12, decimal_places=3, required=False, default=0,
+        help_text="Number of minimum stock threshold for alert"
+    )
     
-    class Meta:
-        model = Ingredient
-        fields = ['name', 'unit', 'min_quantity', 'price_per_unit', 'status']
-
-
-class StockInSerializer(serializers.ModelSerializer):
-    ingredient = IngredientSerializer(read_only=True)
-    ingredient_id = serializers.IntegerField(write_only=True, required=True)
-    price_per_unit = serializers.ReadOnlyField()
+    # Thông tin nhập kho
+    quantity = serializers.DecimalField(max_digits=12, decimal_places=3, help_text="Số lượng nhập")
+    price = serializers.DecimalField(
+        max_digits=12, decimal_places=2, required=False, allow_null=True,
+        help_text="Sum of the total price for this stock-in (can be null)"
+    )
     
     class Meta:
         model = StockIn
-        fields = ['id', 'ingredient', 'ingredient_id', 'quantity', 'price', 'price_per_unit', 'user', 'created_at']
-        read_only_fields = ['id', 'user', 'created_at', 'price_per_unit']
+        fields = [
+            'ingredient_name', 'ingredient_unit', 'min_quantity',
+            'quantity', 'price'
+        ]
         
     def validate_quantity(self, value):
-        if value is None or value <= 0:
-            raise serializers.ValidationError("Quantity must be greater than 0")
+        if value <= 0:
+            raise serializers.ValidationError("Number of stock-in must be greater than 0")
         return value
         
     def validate_price(self, value):
@@ -47,28 +55,50 @@ class StockInSerializer(serializers.ModelSerializer):
         return value
 
 
-class StockOutSerializer(serializers.ModelSerializer):
+class StockInSerializer(serializers.ModelSerializer):
+    """Serializer cho hiển thị lịch sử nhập kho"""
     ingredient = IngredientSerializer(read_only=True)
-    ingredient_id = serializers.IntegerField(write_only=True, required=True)
+    user = UserSerializer(read_only=True)
+    price_per_unit = serializers.ReadOnlyField()
+    
+    class Meta:
+        model = StockIn
+        fields = ['id', 'ingredient', 'quantity', 'price', 'price_per_unit', 'user', 'created_at']
+        read_only_fields = ['id', 'user', 'created_at', 'price_per_unit']
+
+
+class StockOutCreateSerializer(serializers.ModelSerializer):
+    """Serializer cho xuất kho thủ công"""
+    ingredient_name = serializers.CharField(max_length=200, help_text="Tên nguyên liệu cần xuất")
+    quantity = serializers.DecimalField(max_digits=12, decimal_places=3, help_text="Số lượng xuất")
+    reason = serializers.ChoiceField(
+        choices=StockOut.REASON_CHOICES,
+        help_text="Reason for stock-out"
+    )
     
     class Meta:
         model = StockOut
-        fields = ['id', 'ingredient', 'ingredient_id', 'quantity', 'reason', 'user', 'created_at']
-        read_only_fields = ['id', 'user', 'created_at']
+        fields = ['ingredient_name', 'quantity', 'reason']
         
     def validate_quantity(self, value):
-        if value is None or value <= 0:
-            raise serializers.ValidationError("Quantity must be greater than 0")
+        if value <= 0:
+            raise serializers.ValidationError("Number of stock-out must be greater than 0")
+        return value
+        
+    def validate_ingredient_name(self, value):
+        try:
+            ingredient = Ingredient.objects.get(name=value, deleted_at__isnull=True)
+        except Ingredient.DoesNotExist:
+            raise serializers.ValidationError(f"Ingredient '{value}' does not exist in inventory")
         return value
 
 
-class RecipeSerializer(serializers.ModelSerializer):
-    menu_item = MenuItemSerializer(read_only=True)
-    menu_item_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
+class StockOutSerializer(serializers.ModelSerializer):
+    """Serializer cho hiển thị lịch sử xuất kho"""
     ingredient = IngredientSerializer(read_only=True)
-    ingredient_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
+    user = UserSerializer(read_only=True)
     
     class Meta:
-        model = Recipe
-        fields = ['id', 'menu_item', 'menu_item_id', 'ingredient', 'ingredient_id', 'quantity_required', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        model = StockOut
+        fields = ['id', 'ingredient', 'quantity', 'reason', 'user', 'created_at']
+        read_only_fields = ['id', 'user', 'created_at']

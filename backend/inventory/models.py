@@ -6,6 +6,12 @@ class Ingredient(models.Model):
         ('kg', 'Kilogram'),
         ('liter', 'Liter'),
         ('piece', 'Piece'),
+        ('box', 'Box'),
+        ('pack', 'Pack'),
+        ('bottle', 'Bottle'),
+        ('can', 'Can'),
+        ('set', 'Set'),
+        ('other', 'Other'),
     ]
     
     STATUS_CHOICES = [

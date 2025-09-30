@@ -27,7 +27,7 @@ urlpatterns = [
 # 👥 STAFF + ADMIN (Đã đăng nhập):
 # GET    /api/menu/categories/?name=...     - Xem danh sách danh mục
 # GET    /api/menu/categories/{id}/         - Xem chi tiết danh mục + menu items
-# GET    /api/menu/items/?name=...&category=...&status=...  - Xem danh sách món ăn
+# GET    /api/menu/items/?name=...&category_id=...&status=...  - Xem danh sách món ăn
 # GET    /api/menu/items/{id}/              - Xem chi tiết món ăn
 # PATCH  /api/menu/items/{id}/status/       - Thay đổi trạng thái món ăn
 # GET    /api/menu/items/{menu_id}/recipes/ - Xem công thức món ăn
