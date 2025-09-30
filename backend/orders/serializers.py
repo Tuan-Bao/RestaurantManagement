@@ -246,9 +246,14 @@ class PaymentSerializer(serializers.ModelSerializer):
 class PaymentCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Payment
-        fields = ['amount', 'discount', 'tax', 'method']
+        fields = ['discount', 'tax', 'method']
         
-    def validate_amount(self, value):
-        if value <= 0:
-            raise serializers.ValidationError("Amount must be greater than 0")
-        return value
+    def validate_discount(self, value):
+        if value and value < 0:
+            raise serializers.ValidationError("Discount cannot be negative")
+        return value or 0
+        
+    def validate_tax(self, value):
+        if value and value < 0:
+            raise serializers.ValidationError("Tax cannot be negative")
+        return value or 0
