@@ -2,6 +2,7 @@ from rest_framework import status, generics
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from django.utils import timezone
 from django.db.models import Q
 
@@ -392,3 +393,51 @@ def table_change_view(request):
         'message': 'Table change failed',
         'errors': serializer.errors
     }, status=status.HTTP_400_BAD_REQUEST)
+
+# ===== TABLE ORDER VIEW =====
+class TableOrderView(APIView):
+    """
+    GET /api/tables/{id}/order/ - Lấy order unpaid của bàn (status unavailable)
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, pk):
+        try:
+            table = Table.objects.get(pk=pk, deleted_at__isnull=True)
+        except Table.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Table not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Kiểm tra bàn có trạng thái unavailable (có khách)
+        if table.status != 'unavailable':
+            return Response({
+                'success': False,
+                'message': f'Table is {table.status}. Only unavailable tables have active orders.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Lấy order unpaid duy nhất của bàn
+        order = table.orders.filter(status='unpaid').first()
+        
+        if not order:
+            return Response({
+                'success': False,
+                'message': 'No unpaid order found for this table'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Import OrderSerializer từ orders app
+        from orders.serializers import OrderSerializer
+        
+        serializer = OrderSerializer(order)
+        
+        return Response({
+            'success': True,
+            'data': serializer.data,
+            'table_info': {
+                'table_id': table.id,
+                'table_name': table.name,
+                'floor': table.floor,
+                'status': table.status
+            }
+        })

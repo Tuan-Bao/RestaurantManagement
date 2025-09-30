@@ -32,7 +32,7 @@ class OrderSerializer(serializers.ModelSerializer):
     table_floor = serializers.IntegerField(source='table.floor', read_only=True)
     user_name = serializers.CharField(source='user.name', read_only=True)
     table_info = serializers.SerializerMethodField()
-    order_items = OrderItemSerializer(many=True, read_only=True)
+    order_items = serializers.SerializerMethodField()  # Changed to method field
     total_amount = serializers.SerializerMethodField()
     items_count = serializers.SerializerMethodField()
     items_by_status = serializers.SerializerMethodField()
@@ -54,11 +54,56 @@ class OrderSerializer(serializers.ModelSerializer):
             }
         return None
     
+    def get_order_items(self, obj):
+        """Group order items by menu_item and status, sum quantities"""
+        items = obj.order_items.all()
+        grouped_items = {}
+        
+        for item in items:
+            # Create unique key: menu_item_id + status
+            key = f"{item.menu_item_id}_{item.status}"
+            
+            if key not in grouped_items:
+                grouped_items[key] = {
+                    'id': item.id,  # Use first item's ID as representative
+                    'menu_item': item.menu_item_id,
+                    'menu_item_name': item.menu_item.name,
+                    'menu_item_price': item.menu_item.price,
+                    'status': item.status,
+                    'price_each': item.price_each,
+                    'quantity': 0,
+                    'note': item.note,  # Take first note
+                    'created_at': item.created_at,
+                    'updated_at': item.updated_at
+                }
+            
+            # Sum quantities for same menu_item + status
+            grouped_items[key]['quantity'] += item.quantity or 0
+            
+            # Update with latest timestamps and notes (keep most recent)
+            if item.updated_at > grouped_items[key]['updated_at']:
+                grouped_items[key]['updated_at'] = item.updated_at
+                grouped_items[key]['note'] = item.note  # Use latest note
+        
+        # Convert to list and calculate subtotals
+        result = []
+        for item_data in grouped_items.values():
+            item_data['subtotal'] = item_data['quantity'] * (item_data['price_each'] or 0)
+            result.append(item_data)
+        
+        # Sort by menu_item name for consistent ordering
+        return sorted(result, key=lambda x: x['menu_item_name'])
+    
     def get_total_amount(self, obj):
         return sum((item.quantity or 0) * (item.price_each or 0) for item in obj.order_items.all())
     
     def get_items_count(self, obj):
-        return obj.order_items.count()
+        """Count unique menu_item + status combinations"""
+        items = obj.order_items.all()
+        unique_combinations = set()
+        for item in items:
+            unique_combinations.add(f"{item.menu_item_id}_{item.status}")
+        return len(unique_combinations)
     
     def get_items_by_status(self, obj):
         """Group items by status for easy tracking"""
@@ -78,11 +123,12 @@ class OrderHistorySerializer(serializers.ModelSerializer):
     user_name = serializers.CharField(source='user.name', read_only=True)
     table_info = serializers.SerializerMethodField()
     total_amount = serializers.SerializerMethodField()
+    payment_info = serializers.SerializerMethodField()
     
     class Meta:
         model = Order
         fields = ['id', 'table', 'table_name', 'table_floor', 'user', 'user_name', 'table_info', 
-                 'status', 'total_amount', 'created_at', 'closed_at', 'updated_at']
+                 'status', 'total_amount', 'payment_info', 'created_at', 'closed_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
     
     def get_table_info(self, obj):
@@ -98,6 +144,24 @@ class OrderHistorySerializer(serializers.ModelSerializer):
     
     def get_total_amount(self, obj):
         return sum((item.quantity or 0) * (item.price_each or 0) for item in obj.order_items.all())
+    
+    def get_payment_info(self, obj):
+        """Get payment information for the order"""
+        payments = obj.payments.all()
+        if not payments.exists():
+            return None
+        
+        # Lấy payment đầu tiên (thường chỉ có 1 payment per order)
+        payment = payments.first()
+        return {
+            'payment_id': payment.id,
+            'amount': payment.amount,
+            'discount': payment.discount,
+            'tax': payment.tax,
+            'final_amount': payment.amount or 0,  # Chỉ lấy amount gốc, bỏ qua discount và tax
+            'method': payment.method,
+            'paid_at': payment.created_at
+        }
 
 class OrderCreateSerializer(serializers.ModelSerializer):
     items = OrderItemCreateSerializer(many=True, write_only=True)
@@ -177,7 +241,7 @@ class PaymentSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'updated_at']
     
     def get_final_amount(self, obj):
-        return (obj.amount or 0) - (obj.discount or 0) + (obj.tax or 0)
+        return obj.amount or 0  # Chỉ lấy amount gốc, bỏ qua discount và tax
 
 class PaymentCreateSerializer(serializers.ModelSerializer):
     class Meta:

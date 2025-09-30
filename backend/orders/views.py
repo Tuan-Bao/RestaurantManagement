@@ -27,7 +27,8 @@ class OrderListCreateView(generics.ListCreateAPIView):
     
     def get_queryset(self):
         queryset = Order.objects.select_related('table', 'user').prefetch_related(
-            'order_items__menu_item'
+            'order_items__menu_item',
+            'payments'  # Prefetch payments for efficiency
         )
         
         # Custom ordering: floor (asc) → table_name (asc) → order_id (desc)
@@ -157,9 +158,12 @@ def order_by_table_view(request, table_id):
 class OrderItemBulkUpdateView(APIView):
     """
     PATCH /api/orders/{order_id}/items/ - Quản lý món trong đơn hàng
-    - Nếu menu_item đã có: cập nhật quantity, note, status
-    - Nếu menu_item mới: thêm vào đơn
-    - Nếu menu_item không có trong request: xóa khỏi đơn
+    Logic mới:
+    - Món đã có + status ordered: cập nhật số lượng
+    - Món không có trong mảng + status ordered/cancelled: xóa
+    - Món không có trong mảng + status cooking/done: không xóa, báo lỗi
+    - Món mới: thêm với status ordered
+    - Món đã có + status cooking/done: tạo record mới với status ordered
     """
     permission_classes = [IsAuthenticated]
     
@@ -185,16 +189,23 @@ class OrderItemBulkUpdateView(APIView):
                 'message': 'Body must be a list of items'
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        # Build dict for quick lookup: menu_item_id -> item_data
+        # Build dict for quick lookup: menu_item_id -> quantity
         incoming_items = {}
         for item_data in data:
-            if 'menu_item' in item_data:
-                incoming_items[item_data['menu_item']] = item_data
+            if 'menu_item' in item_data and 'quantity' in item_data:
+                if item_data['quantity'] <= 0:
+                    return Response({
+                        'success': False,
+                        'message': 'Quantity must be greater than 0'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                incoming_items[item_data['menu_item']] = {
+                    'quantity': item_data['quantity'],
+                    'note': item_data.get('note', '')
+                }
         
         # Get current order items
         current_items = OrderItem.objects.filter(order=order)
-        current_menu_items = set(item.menu_item_id for item in current_items)
-        incoming_menu_items = set(incoming_items.keys())
+        incoming_menu_item_ids = set(incoming_items.keys())
         
         updated = []
         added = []
@@ -202,122 +213,94 @@ class OrderItemBulkUpdateView(APIView):
         errors = []
         
         with transaction.atomic():
-            # Update existing items or remove items not in incoming
+            # Process existing items
             for order_item in current_items:
-                if order_item.menu_item_id in incoming_menu_items:
-                    # Update existing item
-                    item_data = incoming_items[order_item.menu_item_id]
-                    
-                    # Update fields manually since we don't have serializer
-                    if 'quantity' in item_data:
-                        if item_data['quantity'] > 0:
-                            order_item.quantity = item_data['quantity']
-                        else:
-                            errors.append({'error': 'Quantity must be greater than 0'})
-                            continue
-                    
-                    if 'note' in item_data:
-                        order_item.note = item_data['note']
-                    
-                    if 'status' in item_data:
-                        valid_statuses = ['ordered', 'cooking', 'done', 'cancelled']
-                        if item_data['status'] in valid_statuses:
-                            order_item.status = item_data['status']
-                        else:
-                            errors.append({'error': f'Invalid status: {item_data["status"]}'})
-                            continue
-                    
-                    order_item.save()
-                    updated.append(OrderItemSerializer(order_item).data)
-                else:
-                    # Remove item not in incoming (chỉ xóa nếu status = ordered)
+                menu_item_id = order_item.menu_item_id
+                
+                if menu_item_id in incoming_menu_item_ids:
+                    # Món có trong mảng đầu vào
                     if order_item.status == 'ordered':
-                        removed.append(order_item.menu_item_id)
+                        # Cập nhật số lượng nếu status là ordered
+                        item_data = incoming_items[menu_item_id]
+                        order_item.quantity = item_data['quantity']
+                        order_item.note = item_data['note']
+                        order_item.save()
+                        updated.append(OrderItemSerializer(order_item).data)
+                    
+                    elif order_item.status in ['cooking', 'done']:
+                        # Tạo record mới nếu status là cooking/done
+                        item_data = incoming_items[menu_item_id]
+                        try:
+                            new_order_item = OrderItem.objects.create(
+                                order=order,
+                                menu_item=order_item.menu_item,
+                                quantity=item_data['quantity'],
+                                note=item_data['note'],
+                                price_each=order_item.menu_item.price,
+                                status='ordered'
+                            )
+                            added.append(OrderItemSerializer(new_order_item).data)
+                        except Exception as e:
+                            errors.append({'error': f'Failed to add new item for menu_item {menu_item_id}: {str(e)}'})
+                else:
+                    # Món không có trong mảng đầu vào
+                    if order_item.status in ['ordered', 'cancelled']:
+                        # Xóa nếu status là ordered/cancelled
+                        removed.append({
+                            'menu_item_id': menu_item_id,
+                            'menu_item_name': order_item.menu_item.name,
+                            'quantity': order_item.quantity,
+                            'status': order_item.status
+                        })
                         order_item.delete()
-                    else:
-                        errors.append({'error': f'Cannot delete item {order_item.id} with status "{order_item.status}"'})
+                    
+                    elif order_item.status in ['cooking', 'done']:
+                        # Không xóa nếu status là cooking/done, báo lỗi
+                        errors.append({
+                            'menu_item_id': menu_item_id,
+                            'menu_item_name': order_item.menu_item.name,
+                            'status': order_item.status,
+                            'message': f'Cannot remove item "{order_item.menu_item.name}" with status "{order_item.status}"'
+                        })
             
-            # Add new menu items
-            for menu_item_id in incoming_menu_items - current_menu_items:
+            # Add completely new menu items
+            existing_menu_item_ids = set(item.menu_item_id for item in current_items)
+            new_menu_item_ids = incoming_menu_item_ids - existing_menu_item_ids
+            
+            for menu_item_id in new_menu_item_ids:
                 item_data = incoming_items[menu_item_id]
                 try:
                     menu_item = MenuItem.objects.get(pk=menu_item_id, deleted_at__isnull=True)
-                    order_item = OrderItem.objects.create(
+                    new_order_item = OrderItem.objects.create(
                         order=order,
                         menu_item=menu_item,
-                        quantity=item_data.get('quantity', 1),
-                        note=item_data.get('note', ''),
+                        quantity=item_data['quantity'],
+                        note=item_data['note'],
                         price_each=menu_item.price,
                         status='ordered'
                     )
-                    added.append(OrderItemSerializer(order_item).data)
+                    added.append(OrderItemSerializer(new_order_item).data)
                 except MenuItem.DoesNotExist:
                     errors.append({'error': f'Menu item {menu_item_id} not found'})
                 except Exception as e:
-                    errors.append({'error': str(e)})
+                    errors.append({'error': f'Failed to add menu item {menu_item_id}: {str(e)}'})
         
         return Response({
             'success': True,
-            'message': 'Bulk updated order items',
+            'message': 'Successfully updated order items',
             'updated': updated,
             'added': added,
             'removed': removed,
             'errors': errors if errors else None
         })
 
-class OrderItemDeleteView(generics.DestroyAPIView):
-    """
-    DELETE /api/orders/items/{id}/ - Xóa món khỏi đơn
-    """
-    queryset = OrderItem.objects.all()
-    permission_classes = [IsAuthenticated]
-    
-    def destroy(self, request, *args, **kwargs):
-        order_item = self.get_object()
-        
-        if order_item.order.status == 'paid':
-            return Response({
-                'success': False,
-                'message': 'Cannot delete item from paid order'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        if order_item.status != 'ordered':
-            return Response({
-                'success': False,
-                'message': 'Can only delete items with status "ordered"'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        order_item.delete()
-        return Response({
-            'success': True,
-            'message': 'Deleted order item successfully'
-        }, status=status.HTTP_204_NO_CONTENT)
-
 # ===== PAYMENT VIEWS =====
-class PaymentListCreateView(generics.ListCreateAPIView):
+class PaymentCreateView(generics.CreateAPIView):
     """
-    GET  /api/orders/{order_id}/payments/ - Danh sách thanh toán của đơn
     POST /api/orders/{order_id}/payments/ - Tạo thanh toán + đóng đơn tự động
     """
     permission_classes = [IsAuthenticated]
-    
-    def get_queryset(self):
-        order_id = self.kwargs.get('order_id')
-        return Payment.objects.filter(order_id=order_id)
-    
-    def get_serializer_class(self):
-        if self.request.method == 'POST':
-            return PaymentCreateSerializer
-        return PaymentSerializer
-    
-    def list(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        serializer = self.get_serializer(queryset, many=True)
-        return Response({
-            'success': True,
-            'data': serializer.data,
-            'total': queryset.count()
-        })
+    serializer_class = PaymentCreateSerializer
     
     def create(self, request, *args, **kwargs):
         order_id = self.kwargs.get('order_id')
@@ -429,6 +412,33 @@ class OrderItemStatusUpdateView(generics.UpdateAPIView):
             }, status=status.HTTP_400_BAD_REQUEST)
         
         old_status = order_item.status
+        
+        # Validate status transitions based on business rules
+        if status_value == 'cooking' and old_status != 'ordered':
+            return Response({
+                'success': False,
+                'message': f'Cannot change to "cooking" from "{old_status}". Only items with status "ordered" can be changed to "cooking".'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        if status_value == 'done' and old_status != 'cooking':
+            return Response({
+                'success': False,
+                'message': f'Cannot change to "done" from "{old_status}". Only items with status "cooking" can be changed to "done".'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        if status_value == 'cancelled' and old_status == 'done':
+            return Response({
+                'success': False,
+                'message': f'Cannot change to "cancelled" from "{old_status}". Items with status "done" cannot be cancelled.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Prevent changing from same status to same status
+        if old_status == status_value:
+            return Response({
+                'success': False,
+                'message': f'Item is already in "{status_value}" status'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
         order_item.status = status_value
         order_item.save()
         
@@ -436,51 +446,4 @@ class OrderItemStatusUpdateView(generics.UpdateAPIView):
             'success': True,
             'message': f'Updated order item status from "{old_status}" to "{status_value}"',
             'data': OrderItemSerializer(order_item).data
-        })
-
-class OrderItemListView(generics.ListAPIView):
-    """
-    GET /api/order-items/?order=...&status=...&menu_item=... - Danh sách món trong orders
-    """
-    permission_classes = [IsAuthenticated]
-    serializer_class = OrderItemSerializer
-    
-    def get_queryset(self):
-        queryset = OrderItem.objects.select_related(
-            'order__table', 'menu_item'
-        ).order_by('-created_at')
-        
-        # Filter by order
-        order_id = self.request.query_params.get('order')
-        if order_id:
-            queryset = queryset.filter(order_id=order_id)
-        
-        # Filter by status
-        status_param = self.request.query_params.get('status')
-        if status_param:
-            queryset = queryset.filter(status=status_param)
-        
-        # Filter by menu item
-        menu_item = self.request.query_params.get('menu_item')
-        if menu_item:
-            queryset = queryset.filter(menu_item_id=menu_item)
-        
-        # Filter by table floor
-        floor = self.request.query_params.get('floor')
-        if floor:
-            try:
-                floor_int = int(floor)
-                queryset = queryset.filter(order__table__floor=floor_int)
-            except (ValueError, TypeError):
-                pass
-        
-        return queryset
-    
-    def list(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        serializer = self.get_serializer(queryset, many=True)
-        return Response({
-            'success': True,
-            'data': serializer.data,
-            'total': queryset.count()
         })
