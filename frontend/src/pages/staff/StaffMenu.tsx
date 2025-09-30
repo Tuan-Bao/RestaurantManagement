@@ -317,7 +317,7 @@ const StaffMenu: React.FC = () => {
           </p>
         </div>
 
-        <div className="d-flex gap-2">
+        {/* <div className="d-flex gap-2">
           <button className="btn btn-outline-primary">
             <i className="bi bi-download me-1"></i>
             Xuất thực đơn
@@ -326,16 +326,15 @@ const StaffMenu: React.FC = () => {
             <i className="bi bi-plus-lg me-1"></i>
             Thêm món mới
           </button>
-        </div>
+        </div> */}
       </div>
 
       {/* Menu Categories */}
       <div className="mb-4">
         <div className="d-flex flex-wrap gap-2">
           <button
-            className={`btn ${
-              selectedCategory === "all" ? "btn-primary" : "btn-outline-primary"
-            }`}
+            className={`btn ${selectedCategory === "all" ? "btn-primary" : "btn-outline-primary"
+              }`}
             onClick={() => setSelectedCategory("all")}
           >
             <i className="bi bi-grid me-1"></i>
@@ -344,11 +343,10 @@ const StaffMenu: React.FC = () => {
           {mockMenuData.categories.map(category => (
             <button
               key={category.id}
-              className={`btn ${
-                selectedCategory === category.id
+              className={`btn ${selectedCategory === category.id
                   ? "btn-primary"
                   : "btn-outline-primary"
-              }`}
+                }`}
               onClick={() => setSelectedCategory(category.id)}
             >
               <i className={`${category.icon} me-1`}></i>
