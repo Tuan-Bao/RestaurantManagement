@@ -14,7 +14,7 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
     status: "all",
     search: "",
     sortBy: "newest",
-    timeRange: "today",
+    timeRange: "all",
   });
 
   const applyFilters = (newFilters = filters) => {
@@ -37,17 +37,6 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
             item.menuItemName.toLowerCase().includes(searchLower)
           )
       );
-    }
-
-    // Filter by time range
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-    if (newFilters.timeRange === "today") {
-      filtered = filtered.filter(order => new Date(order.createdAt) >= today);
-    } else if (newFilters.timeRange === "week") {
-      const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-      filtered = filtered.filter(order => new Date(order.createdAt) >= weekAgo);
     }
 
     // Sort orders
@@ -85,11 +74,8 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
     const active = orders.filter(o => o.status === "active").length;
     const completed = orders.filter(o => o.status === "completed").length;
     const cancelled = orders.filter(o => o.status === "cancelled").length;
-    const totalRevenue = orders
-      .filter(o => o.status === "completed")
-      .reduce((sum, o) => sum + o.totalAmount, 0);
 
-    return { active, completed, cancelled, total: orders.length, totalRevenue };
+    return { active, completed, cancelled, total: orders.length };
   };
 
   const stats = getOrderStats();
@@ -140,20 +126,6 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
               </div>
             </div>
           </div>
-
-          <div className="col-lg-3 col-md-6 mb-3">
-            <div className="d-flex align-items-center">
-              <div className="bg-warning text-white rounded p-3 me-3">
-                <i className="bi bi-currency-dollar fs-4"></i>
-              </div>
-              <div>
-                <h5 className="mb-0">
-                  {stats.totalRevenue.toLocaleString("vi-VN")}đ
-                </h5>
-                <small className="text-muted">Doanh thu</small>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Filter Controls */}
@@ -176,22 +148,7 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
             </select>
           </div>
 
-          <div className="col-md-3 mb-3">
-            <label className="form-label">
-              <i className="bi bi-calendar me-1"></i>
-              Thời gian
-            </label>
-            <select
-              className="form-select"
-              value={filters.timeRange}
-              onChange={e => handleFilterChange("timeRange", e.target.value)}
-              aria-label="Khoảng thời gian"
-            >
-              <option value="today">Hôm nay</option>
-              <option value="week">7 ngày qua</option>
-              <option value="all">Tất cả thời gian</option>
-            </select>
-          </div>
+
 
           <div className="col-md-3 mb-3">
             <label className="form-label">
@@ -229,11 +186,10 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
         {/* Quick Filter Buttons */}
         <div className="d-flex flex-wrap gap-2">
           <button
-            className={`btn btn-sm ${
-              filters.status === "active"
+            className={`btn btn-sm ${filters.status === "active"
                 ? "btn-success"
                 : "btn-outline-success"
-            }`}
+              }`}
             onClick={() =>
               handleFilterChange(
                 "status",
@@ -245,43 +201,27 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({
             Đang hoạt động ({stats.active})
           </button>
 
-          <button
-            className={`btn btn-sm ${
-              filters.timeRange === "today"
-                ? "btn-primary"
-                : "btn-outline-primary"
-            }`}
-            onClick={() =>
-              handleFilterChange(
-                "timeRange",
-                filters.timeRange === "today" ? "all" : "today"
-              )
-            }
-          >
-            <i className="bi bi-calendar-today me-1"></i>
-            Hôm nay
-          </button>
+
 
           {(filters.status !== "all" ||
-            filters.search ||
-            filters.timeRange !== "today") && (
-            <button
-              className="btn btn-sm btn-outline-secondary"
-              onClick={() => {
-                const resetFilters = {
-                  status: "all",
-                  search: "",
-                  sortBy: "newest",
-                  timeRange: "today",
-                };
-                setFilters(resetFilters);
-                applyFilters(resetFilters);
-              }}
-            >
-              <i className="bi bi-x-circle me-1"></i>
-              Xóa bộ lọc
-            </button>
-          )}
+            filters.search) && (
+              <button
+                className="btn btn-sm btn-outline-secondary"
+                onClick={() => {
+                  const resetFilters = {
+                    status: "all",
+                    search: "",
+                    sortBy: "newest",
+                    timeRange: "all",
+                  };
+                  setFilters(resetFilters);
+                  applyFilters(resetFilters);
+                }}
+              >
+                <i className="bi bi-x-circle me-1"></i>
+                Xóa bộ lọc
+              </button>
+            )}
         </div>
       </div>
     </div>
