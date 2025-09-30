@@ -15,7 +15,7 @@ const StaffMenu: React.FC = () => {
   );
 
   // Mock data - In production, this would be fetched from API
-  const mockMenuData: MenuData = {
+  const [menuData, setMenuData] = useState<MenuData>({
     categories: [
       {
         id: 1,
@@ -283,16 +283,30 @@ const StaffMenu: React.FC = () => {
         updatedAt: "2024-01-01T00:00:00Z",
       },
     ],
-  };
+  });
 
   const currentItems =
     selectedCategory === "all"
-      ? mockMenuData.items
-      : mockMenuData.items.filter(item => item.categoryId === selectedCategory);
+      ? menuData.items
+      : menuData.items.filter(item => item.categoryId === selectedCategory);
 
   const handleToggleAvailability = (itemId: number) => {
-    // In production, this would call an API
-    console.log(`Toggle availability for item ${itemId}`);
+    setMenuData(prevData => ({
+      ...prevData,
+      items: prevData.items.map(item =>
+        item.id === itemId
+          ? { ...item, isAvailable: !item.isAvailable }
+          : item
+      ),
+    }));
+
+    // Hiển thị thông báo
+    const item = menuData.items.find(item => item.id === itemId);
+    if (item) {
+      console.log(
+        `${item.name} đã được ${item.isAvailable ? "tắt" : "bật"} khả dụng`
+      );
+    }
   };
 
   const handleViewRecipe = (item: MenuItem) => {
@@ -338,21 +352,21 @@ const StaffMenu: React.FC = () => {
             onClick={() => setSelectedCategory("all")}
           >
             <i className="bi bi-grid me-1"></i>
-            Tất cả ({mockMenuData.items.length})
+            Tất cả ({menuData.items.length})
           </button>
-          {mockMenuData.categories.map(category => (
+          {menuData.categories.map(category => (
             <button
               key={category.id}
               className={`btn ${selectedCategory === category.id
-                  ? "btn-primary"
-                  : "btn-outline-primary"
+                ? "btn-primary"
+                : "btn-outline-primary"
                 }`}
               onClick={() => setSelectedCategory(category.id)}
             >
               <i className={`${category.icon} me-1`}></i>
               {category.name} (
               {
-                mockMenuData.items.filter(i => i.categoryId === category.id)
+                menuData.items.filter(i => i.categoryId === category.id)
                   .length
               }
               )
