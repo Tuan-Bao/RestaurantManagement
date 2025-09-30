@@ -4,7 +4,6 @@ class Table(models.Model):
     STATUS_CHOICES = [
         ('available', 'Available'),
         ('unavailable', 'Unavailable'),
-        ('merged', 'Merged'),  # Thêm status cho bàn đã ghép
     ]
     
     name = models.CharField(max_length=100, null=True, blank=True)
@@ -16,11 +15,6 @@ class Table(models.Model):
 
     def __str__(self):
         return f"Table {self.name} - Floor {self.floor}"
-
-    @property
-    def is_available_for_merge(self):
-        """Check if table can be merged (available or has unpaid orders)"""
-        return self.status in ['available', 'unavailable'] and not self.deleted_at
     
     @property
     def current_orders(self):
