@@ -14,9 +14,8 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
 }) => {
   return (
     <div
-      className={`card h-100 menu-item-card ${
-        !item.isAvailable ? "unavailable" : ""
-      }`}
+      className={`card h-100 menu-item-card ${!item.isAvailable ? "unavailable" : ""
+        }`}
     >
       <div className="card-body">
         {/* Item Header */}
