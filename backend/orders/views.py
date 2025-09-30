@@ -227,21 +227,66 @@ class OrderItemBulkUpdateView(APIView):
                         order_item.save()
                         updated.append(OrderItemSerializer(order_item).data)
                     
-                    elif order_item.status in ['cooking', 'done']:
-                        # Tạo record mới nếu status là cooking/done
-                        item_data = incoming_items[menu_item_id]
-                        try:
-                            new_order_item = OrderItem.objects.create(
-                                order=order,
-                                menu_item=order_item.menu_item,
-                                quantity=item_data['quantity'],
-                                note=item_data['note'],
-                                price_each=order_item.menu_item.price,
-                                status='ordered'
-                            )
-                            added.append(OrderItemSerializer(new_order_item).data)
-                        except Exception as e:
-                            errors.append({'error': f'Failed to add new item for menu_item {menu_item_id}: {str(e)}'})
+                    elif order_item.status == 'cooking':
+                        # Tạo record mới nếu status là cooking
+                        existing_ordered = OrderItem.objects.filter(
+                            order=order,
+                            menu_item_id=menu_item_id,
+                            status='ordered'
+                        ).exists()
+                        if existing_ordered:
+                            pass  # Đã có record ordered, bỏ qua
+                        else:
+                            item_data = incoming_items[menu_item_id]
+                            try:
+                                new_order_item = OrderItem.objects.create(
+                                    order=order,
+                                    menu_item=order_item.menu_item,
+                                    quantity=item_data['quantity'],
+                                    note=item_data['note'],
+                                    price_each=order_item.menu_item.price,
+                                    status='ordered'
+                                )
+                                added.append(OrderItemSerializer(new_order_item).data)
+                            except Exception as e:
+                                errors.append({'error': f'Failed to add new item for menu_item {menu_item_id}: {str(e)}'})
+                    
+                    elif order_item.status == 'done':
+                        # Kiểm tra xem đã có record khác với status 'ordered' chưa
+                        existing_ordered = OrderItem.objects.filter(
+                            order=order,
+                            menu_item_id=menu_item_id,
+                            status='ordered'
+                        ).exists()
+                        
+                        # Kiểm tra xem có record cooking không
+                        existing_cooking = OrderItem.objects.filter(
+                            order=order,
+                            menu_item_id=menu_item_id,
+                            status='cooking'
+                        ).exists()
+                        
+                        if existing_ordered:
+                            # Đã có record ordered, bỏ qua
+                            pass
+                        elif existing_cooking:
+                            # Có record cooking, chuyển quyền cho cooking tạo record
+                            pass
+                        else:
+                            # Chưa có record ordered và cooking, tạo mới
+                            item_data = incoming_items[menu_item_id]
+                            try:
+                                new_order_item = OrderItem.objects.create(
+                                    order=order,
+                                    menu_item=order_item.menu_item,
+                                    quantity=item_data['quantity'],
+                                    note=item_data['note'],
+                                    price_each=order_item.menu_item.price,
+                                    status='ordered'
+                                )
+                                added.append(OrderItemSerializer(new_order_item).data)
+                            except Exception as e:
+                                errors.append({'error': f'Failed to add new item for menu_item {menu_item_id}: {str(e)}'})
                 else:
                     # Món không có trong mảng đầu vào
                     if order_item.status in ['ordered', 'cancelled']:
@@ -322,8 +367,34 @@ class PaymentCreateView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             with transaction.atomic():
-                # Tạo payment
-                payment = serializer.save(order=order)
+                # Tính total_amount từ order items
+                total_amount = sum(
+                    (item.quantity or 0) * (item.price_each or 0) 
+                    for item in order.order_items.all()
+                )
+                
+                # Lấy discount và tax từ request
+                discount = serializer.validated_data.get('discount', 0)
+                tax = serializer.validated_data.get('tax', 0)
+                method = serializer.validated_data['method']
+                
+                # Tính amount = total_amount - discount - tax
+                calculated_amount = total_amount - discount - tax
+                
+                if calculated_amount <= 0:
+                    return Response({
+                        'success': False,
+                        'message': f'Calculated amount must be greater than 0. Total: {total_amount}, Discount: {discount}, Tax: {tax}, Result: {calculated_amount}'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                
+                # Tạo payment với amount được tính tự động
+                payment = Payment.objects.create(
+                    order=order,
+                    amount=calculated_amount,
+                    discount=discount,
+                    tax=tax,
+                    method=method
+                )
                 
                 # Tự động đóng đơn
                 order.status = 'paid'
@@ -338,7 +409,13 @@ class PaymentCreateView(generics.CreateAPIView):
             return Response({
                 'success': True,
                 'message': 'Payment created and order closed successfully',
-                'data': PaymentSerializer(payment).data
+                'data': PaymentSerializer(payment).data,
+                'calculation': {
+                    'total_amount': float(total_amount),
+                    'discount': float(discount),
+                    'tax': float(tax),
+                    'final_amount': float(calculated_amount)
+                }
             }, status=status.HTTP_201_CREATED)
         
         return Response({
