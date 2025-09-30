@@ -397,7 +397,6 @@ const AdminMenu: React.FC = () => {
                                 item={item}
                                 onToggleAvailability={handleToggleAvailability}
                                 onViewDetails={handleViewRecipe}
-                                onEdit={handleEdit}
                                 onDelete={handleDelete}
                             />
                         </div>
@@ -444,6 +443,8 @@ const AdminMenu: React.FC = () => {
                 item={selectedRecipeItem}
                 isOpen={selectedRecipeItem !== null}
                 onClose={handleCloseRecipe}
+                onEdit={handleEdit}
+                showEditButton={true}
             />
         </AdminLayout>
     );

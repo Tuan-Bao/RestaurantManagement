@@ -1,19 +1,16 @@
 import React from "react";
 import type { MenuItem } from "../../types/menu";
+import "./AdminMenu.css";
 
 interface AdminMenuItemCardProps {
-    item: MenuItem;
-    onToggleAvailability: (itemId: number) => void;
-    onViewDetails: (item: MenuItem) => void;
-    onEdit: (item: MenuItem) => void;
-    onDelete: (itemId: number) => void;
-}
-
-const AdminMenuItemCard: React.FC<AdminMenuItemCardProps> = ({
+  item: MenuItem;
+  onToggleAvailability: (itemId: number) => void;
+  onViewDetails: (item: MenuItem) => void;
+  onDelete: (itemId: number) => void;
+}const AdminMenuItemCard: React.FC<AdminMenuItemCardProps> = ({
     item,
     onToggleAvailability,
     onViewDetails,
-    onEdit,
     onDelete,
 }) => {
     return (
@@ -155,46 +152,20 @@ const AdminMenuItemCard: React.FC<AdminMenuItemCardProps> = ({
                 {/* Action Buttons */}
                 <div className="d-flex gap-2 mt-auto">
                     <button
-                        className="btn btn-outline-primary btn-sm"
+                        className="btn btn-outline-primary btn-sm flex-grow-1"
                         onClick={() => onViewDetails(item)}
                     >
                         <i className="bi bi-eye me-1"></i>
                         Chi tiết
                     </button>
-
-                    <div className="dropdown">
-                        <button
-                            className="btn btn-outline-secondary btn-sm dropdown-toggle"
-                            type="button"
-                            data-bs-toggle="dropdown"
-                            aria-label="Thao tác khác"
-                        >
-                            <i className="bi bi-gear"></i>
-                        </button>
-                        <ul className="dropdown-menu">
-                            <li>
-                                <button
-                                    className="dropdown-item"
-                                    onClick={() => onEdit(item)}
-                                >
-                                    <i className="bi bi-pencil me-2"></i>
-                                    Chỉnh sửa thông tin
-                                </button>
-                            </li>
-                            <li>
-                                <hr className="dropdown-divider" />
-                            </li>
-                            <li>
-                                <button
-                                    className="dropdown-item text-danger"
-                                    onClick={() => onDelete(item.id)}
-                                >
-                                    <i className="bi bi-trash me-2"></i>
-                                    Xóa món ăn
-                                </button>
-                            </li>
-                        </ul>
-                    </div>
+                    
+                    <button
+                        className="btn btn-outline-danger btn-sm"
+                        onClick={() => onDelete(item.id)}
+                        title="Xóa món ăn"
+                    >
+                        <i className="bi bi-trash"></i>
+                    </button>
                 </div>
             </div>
 

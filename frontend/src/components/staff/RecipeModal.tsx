@@ -5,9 +5,17 @@ interface RecipeModalProps {
   item: MenuItem | null;
   isOpen: boolean;
   onClose: () => void;
+  onEdit?: (item: MenuItem) => void;
+  showEditButton?: boolean;
 }
 
-const RecipeModal: React.FC<RecipeModalProps> = ({ item, isOpen, onClose }) => {
+const RecipeModal: React.FC<RecipeModalProps> = ({ 
+  item, 
+  isOpen, 
+  onClose, 
+  onEdit, 
+  showEditButton = false 
+}) => {
   if (!isOpen || !item) return null;
 
   return (
@@ -100,11 +108,21 @@ const RecipeModal: React.FC<RecipeModalProps> = ({ item, isOpen, onClose }) => {
             <div className="modal-footer">
               <button
                 type="button"
-                className="btn btn-primary"
+                className="btn btn-secondary"
                 onClick={onClose}
               >
                 Đóng
               </button>
+              {showEditButton && onEdit && (
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => onEdit(item)}
+                >
+                  <i className="bi bi-pencil me-1"></i>
+                  Chỉnh sửa thông tin
+                </button>
+              )}
             </div>
           </div>
         </div>

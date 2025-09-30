@@ -1,0 +1,4 @@
+/* Simple dropdown fix */
+.dropdown-menu {
+  z-index: 1050 !important;
+}
