@@ -27,9 +27,12 @@ urlpatterns = [
 # ======================================================================
 
 # 📋 ORDER APIs:
-# GET    /api/orders/?table=...&status=...&floor=...&date_from=...&date_to=...&table_name=...     - Danh sách đơn hàng + lịch sử
+# GET    /api/orders/?table=...&status=...&floor=...&date_from=...&date_to=...&table_name=...     
+#        - Lịch sử đơn hàng với ordering: tầng (tăng dần) → tên bàn (tăng dần) → order_id (giảm dần)
+#        - Filter: table, status, floor, date_from, date_to, table_name
+#        - Response: OrderHistorySerializer (bao gồm thông tin bàn, tầng, user, total_amount, duration)
 # POST   /api/orders/                          - Tạo đơn hàng mới + thêm món
-# GET    /api/orders/{id}/                     - Chi tiết đơn hàng (bao gồm table info, floor, chi tiết các món)
+# GET    /api/orders/{id}/                     - Chi tiết đơn hàng đầy đủ (bao gồm table info, floor, chi tiết các món)
 
 # 🍽️ ORDER ITEMS APIs:
 # GET    /api/orders/items/?order=...&status=...&menu_item=...&floor=...  - Danh sách món trong orders
