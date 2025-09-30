@@ -16,6 +16,9 @@ urlpatterns = [
     path('merge/', views.table_merge_view, name='table-merge'),
     path('change/', views.table_change_view, name='table-change'),
     
+    # Table order endpoint
+    path('<int:pk>/order/', views.TableOrderView.as_view(), name='table-order'),
+    
     # Statistics endpoint
     path('stats/', views.table_stats_view, name='table-stats'),
 ]
@@ -28,6 +31,7 @@ urlpatterns = [
 # GET    /api/tables/           - Xem danh sách bàn
 # GET    /api/tables/{id}/      - Xem chi tiết bàn  
 # PATCH  /api/tables/{id}/status/ - Thay đổi trạng thái bàn (available ↔ unavailable)
+# GET    /api/tables/{id}/order/ - Lấy order unpaid của bàn (chỉ unavailable tables)
 # GET    /api/tables/stats/     - Xem thống kê bàn
 
 # 🔒 ADMIN ONLY:
@@ -58,6 +62,29 @@ urlpatterns = [
 # ======================================================================
 # BODY EXAMPLES:
 # ======================================================================
+
+# GET /api/tables/{id}/order/ Response (Bàn có order unpaid):
+# {
+#   "success": true,
+#   "data": {
+#     "id": 15,
+#     "status": "unpaid",
+#     "total_amount": "450000.00",
+#     "created_at": "2024-01-15T14:30:00Z",
+#     "user": {"id": 1, "username": "staff01"},
+#     "table": {"id": 5, "name": "Bàn 5", "floor": 2},
+#     "order_items": [
+#       {"id": 20, "quantity": 2, "status": "ordered", "menu_item": {"name": "Phở bò", "price": "80000.00"}},
+#       {"id": 21, "quantity": 1, "status": "cooking", "menu_item": {"name": "Cơm gà", "price": "90000.00"}}
+#     ]
+#   },
+#   "table_info": {
+#     "table_id": 5,
+#     "table_name": "Bàn 5", 
+#     "floor": 2,
+#     "status": "unavailable"
+#   }
+# }
 
 # POST /api/tables/merge/ (Ghép bàn - chỉ available tables):
 # {
