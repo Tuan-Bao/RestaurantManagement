@@ -5,13 +5,15 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.utils import timezone
 from django.db.models import Q
+from django.db import transaction
 
 from .models import Table
 from .serializers import (
     TableSerializer, 
     TableCreateSerializer, 
     TableUpdateSerializer,
-    TableStatusSerializer
+    TableStatusSerializer,
+    TableChangeSerializer
 )
 from accounts.permissions import IsAdminUser
 
@@ -199,141 +201,18 @@ def table_stats_view(request):
     })
 
 
-# ===== TABLE MERGE OPERATIONS =====
-from django.db import transaction
-from .models import TableMerge
-from .serializers import (
-    TableMergeSerializer, 
-    TableMergeCreateSerializer,
-    TableChangeSerializer
-)
-
-class TableMergeListView(generics.ListAPIView):
-    """
-    GET /api/tables/merges/ - Xem danh sách ghép bàn (Staff + Admin)
-    """
-    permission_classes = [IsAuthenticated]
-    serializer_class = TableMergeSerializer
-    
-    def get_queryset(self):
-        queryset = TableMerge.objects.all()
-        
-        # Filter by active status
-        is_active = self.request.query_params.get('is_active')
-        if is_active is not None:
-            queryset = queryset.filter(is_active=is_active.lower() == 'true')
-        
-        # Filter by main table
-        main_table = self.request.query_params.get('main_table')
-        if main_table:
-            queryset = queryset.filter(main_table_id=main_table)
-        
-        return queryset
-    
-    def list(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        serializer = self.get_serializer(queryset, many=True)
-        return Response({
-            'success': True,
-            'data': serializer.data,
-            'total': queryset.count()
-        })
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def table_merge_view(request):
-    """
-    POST /api/tables/merge/ - Ghép bàn (Staff + Admin)
-    """
-    serializer = TableMergeCreateSerializer(data=request.data)
-    
-    if serializer.is_valid():
-        try:
-            with transaction.atomic():
-                main_table_id = serializer.validated_data['main_table_id']
-                merged_table_ids = serializer.validated_data['merged_table_ids']
-                
-                # Get tables
-                main_table = Table.objects.get(id=main_table_id)
-                merged_tables = Table.objects.filter(id__in=merged_table_ids)
-                
-                # Create table merge record
-                table_merge = TableMerge.objects.create(
-                    main_table=main_table,
-                    created_by=request.user
-                )
-                table_merge.merged_tables.set(merged_tables)
-                
-                # Update table status
-                merged_tables.update(status='merged')
-                
-                # Move all orders from merged tables to main table
-                from django.apps import apps
-                Order = apps.get_model('orders', 'Order')
-                
-                for table in merged_tables:
-                    table.orders.filter(status='unpaid').update(table=main_table)
-                
-                return Response({
-                    'success': True,
-                    'message': f'Successfully merged {len(merged_table_ids)} tables into {main_table.name}',
-                    'data': TableMergeSerializer(table_merge).data
-                }, status=status.HTTP_201_CREATED)
-                
-        except Exception as e:
-            return Response({
-                'success': False,
-                'message': f'Table merge failed: {str(e)}'
-            }, status=status.HTTP_400_BAD_REQUEST)
-    
-    return Response({
-        'success': False,
-        'message': 'Table merge failed',
-        'errors': serializer.errors
-    }, status=status.HTTP_400_BAD_REQUEST)
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def table_separate_view(request, merge_id):
-    """
-    POST /api/tables/merges/{merge_id}/separate/ - Tách bàn (Staff + Admin)
-    """
-    try:
-        table_merge = TableMerge.objects.get(id=merge_id, is_active=True)
-    except TableMerge.DoesNotExist:
-        return Response({
-            'success': False,
-            'message': 'Active table merge not found'
-        }, status=status.HTTP_404_NOT_FOUND)
-    
-    try:
-        with transaction.atomic():
-            # Update merge record
-            table_merge.separated_at = timezone.now()
-            table_merge.separated_by = request.user
-            table_merge.is_active = False
-            table_merge.save()
-            
-            # Reset merged tables status to available
-            table_merge.merged_tables.update(status='available')
-            
-            return Response({
-                'success': True,
-                'message': f'Successfully separated tables from {table_merge.main_table.name}',
-                'data': TableMergeSerializer(table_merge).data
-            })
-            
-    except Exception as e:
-        return Response({
-            'success': False,
-            'message': f'Table separation failed: {str(e)}'
-        }, status=status.HTTP_400_BAD_REQUEST)
+# ===== TABLE ORDER VIEW =====
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def table_change_view(request):
     """
-    POST /api/tables/change/ - Đổi bàn cho order (Staff + Admin)
+    POST /api/tables/change/ - Chuyển bàn cho order (Staff + Admin)
+    Business Rules:
+    - Bàn nguồn phải có status 'unavailable' (có order unpaid)
+    - Bàn đích phải có status 'available'
+    - Bàn nguồn sẽ thành 'available' sau khi chuyển
+    - Bàn đích sẽ thành 'unavailable' sau khi nhận order
     """
     serializer = TableChangeSerializer(data=request.data)
     
@@ -342,46 +221,61 @@ def table_change_view(request):
             with transaction.atomic():
                 from_table_id = serializer.validated_data['from_table_id']
                 to_table_id = serializer.validated_data['to_table_id']
-                order_id = serializer.validated_data.get('order_id')
                 
                 from django.apps import apps
                 Order = apps.get_model('orders', 'Order')
                 
-                # Get orders to move
-                if order_id:
-                    orders_to_move = Order.objects.filter(
-                        id=order_id, 
-                        table_id=from_table_id, 
-                        status='unpaid'
-                    )
-                else:
-                    orders_to_move = Order.objects.filter(
-                        table_id=from_table_id, 
-                        status='unpaid'
-                    )
+                # Get tables
+                from_table = Table.objects.get(id=from_table_id)
+                to_table = Table.objects.get(id=to_table_id)
+                
+                # Get all unpaid orders from source table
+                orders_to_move = Order.objects.filter(
+                    table_id=from_table_id, 
+                    status='unpaid'
+                )
                 
                 if not orders_to_move.exists():
                     return Response({
                         'success': False,
-                        'message': 'No orders found to move'
+                        'message': 'No unpaid orders found to move'
                     }, status=status.HTTP_400_BAD_REQUEST)
                 
                 # Move orders to new table
                 moved_count = orders_to_move.update(table_id=to_table_id)
                 
-                from_table = Table.objects.get(id=from_table_id)
-                to_table = Table.objects.get(id=to_table_id)
+                # Update table statuses
+                # Bàn nguồn thành available (không còn order)
+                from_table.status = 'available'
+                from_table.save()
+                
+                # Bàn đích thành unavailable (có order)
+                to_table.status = 'unavailable'
+                to_table.save()
                 
                 return Response({
                     'success': True,
                     'message': f'Successfully moved {moved_count} order(s) from {from_table.name} to {to_table.name}',
                     'data': {
                         'moved_orders_count': moved_count,
-                        'from_table': TableSerializer(from_table).data,
-                        'to_table': TableSerializer(to_table).data
+                        'from_table': {
+                            'id': from_table.id,
+                            'name': from_table.name,
+                            'status': from_table.status
+                        },
+                        'to_table': {
+                            'id': to_table.id,
+                            'name': to_table.name,
+                            'status': to_table.status
+                        }
                     }
                 }, status=status.HTTP_200_OK)
                 
+        except Table.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Table not found'
+            }, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({
                 'success': False,
@@ -394,7 +288,7 @@ def table_change_view(request):
         'errors': serializer.errors
     }, status=status.HTTP_400_BAD_REQUEST)
 
-# ===== TABLE ORDER VIEW =====
+# ===== TABLE ORDER VIEW =====# ===== TABLE ORDER VIEW =====
 class TableOrderView(APIView):
     """
     GET /api/tables/{id}/order/ - Lấy order unpaid của bàn (status unavailable)
