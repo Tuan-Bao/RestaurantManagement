@@ -9,6 +9,7 @@ import AdminTables from "../pages/admin/AdminTables";
 import WarehousePage from "../pages/admin/WarehousePage";
 import StockInHistoryPage from "../pages/admin/StockInHistoryPage";
 import StockOutHistoryPage from "../pages/admin/StockOutHistoryPage";
+import AdminOrders from "../pages/admin/AdminOrders";
 import StaffDashboard from "../pages/staff/StaffDashboard";
 import StaffTables from "../pages/staff/StaffTables";
 import StaffOrders from "../pages/staff/StaffOrders";
@@ -54,7 +55,7 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
-      
+
       <Route
         path="/admin/tables"
         element={
@@ -88,6 +89,15 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute requiredRole="admin">
             <StockOutHistoryPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/admin/orders"
+        element={
+          <ProtectedRoute requiredRole="admin">
+            <AdminOrders />
           </ProtectedRoute>
         }
       />
