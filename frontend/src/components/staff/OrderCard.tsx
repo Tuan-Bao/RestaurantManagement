@@ -92,9 +92,9 @@ const OrderCard: React.FC<OrderCardProps> = ({
       }),
       estimated: order.estimatedCompletionTime
         ? new Date(order.estimatedCompletionTime).toLocaleTimeString("vi-VN", {
-            hour: "2-digit",
-            minute: "2-digit",
-          })
+          hour: "2-digit",
+          minute: "2-digit",
+        })
         : null,
     };
   };
@@ -262,9 +262,9 @@ const OrderCard: React.FC<OrderCardProps> = ({
                   Hủy đơn hàng
                 </button>
 
-                <button className="btn btn-outline-secondary">
-                  <i className="bi bi-printer me-1"></i>
-                  In bill
+                <button className="btn btn-outline-success">
+                  <i className="bi bi-credit-card me-1"></i>
+                  Xác nhận thanh toán
                 </button>
               </div>
             </div>
