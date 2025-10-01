@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import OrderDetailsModal from "./OrderDetailsModal";
 import type { Order, OrderItem } from "../../types/order";
 import OrderItemCard from "./OrderItemCard";
 
@@ -19,7 +20,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
   onOrderStatusChange,
   onItemDelete,
 }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [showModal, setShowModal] = useState(false);
 
   const getOrderStatusBadge = (status: Order["status"]) => {
     const statusConfig = {
@@ -123,12 +124,10 @@ const OrderCard: React.FC<OrderCardProps> = ({
             </small>
             <button
               className="btn btn-sm btn-outline-primary"
-              onClick={() => setIsExpanded(!isExpanded)}
+              onClick={() => setShowModal(true)}
             >
-              <i
-                className={`bi bi-chevron-${isExpanded ? "up" : "down"} me-1`}
-              ></i>
-              {isExpanded ? "Thu gọn" : "Chi tiết"}
+              <i className="bi bi-eye me-1"></i>
+              Chi tiết
             </button>
           </div>
         </div>
@@ -174,32 +173,11 @@ const OrderCard: React.FC<OrderCardProps> = ({
             <small className="text-muted d-block">Thời gian đặt</small>
             <small className="fw-bold">{timeInfo.createdAt}</small>
           </div>
-          <div className="col-sm-4">
-            <small className="text-muted d-block">Đã trôi qua</small>
-            <small className="fw-bold text-warning">
-              {timeInfo.elapsed} phút
-            </small>
-          </div>
-          <div className="col-sm-4">
-            <small className="text-muted d-block">Dự kiến hoàn thành</small>
-            <small className="fw-bold text-info">
-              {timeInfo.estimated || "Chưa xác định"}
-            </small>
-          </div>
         </div>
 
         {/* Customer & Total */}
         <div className="row mt-3">
           <div className="col-sm-6">
-            {order.customerName && (
-              <>
-                <small className="text-muted d-block">Khách hàng</small>
-                <small className="fw-bold">
-                  <i className="bi bi-person me-1"></i>
-                  {order.customerName}
-                </small>
-              </>
-            )}
           </div>
           <div className="col-sm-6 text-end">
             <small className="text-muted d-block">Tổng tiền</small>
@@ -208,69 +186,17 @@ const OrderCard: React.FC<OrderCardProps> = ({
             </strong>
           </div>
         </div>
-
-        {order.notes && (
-          <div className="alert alert-info mt-3 mb-0 py-2">
-            <i className="bi bi-info-circle me-2"></i>
-            <small>
-              <strong>Ghi chú đơn hàng:</strong> {order.notes}
-            </small>
-          </div>
-        )}
       </div>
 
-      {/* Expandable Items List */}
-      {isExpanded && (
-        <div className="card-body">
-          <h6 className="mb-3">
-            <i className="bi bi-list me-2"></i>
-            Chi tiết món ăn ({order.items.length} món)
-          </h6>
-
-          {order.items.map(item => (
-            <OrderItemCard
-              key={item.id}
-              item={item}
-              onStatusChange={handleItemStatusChange}
-              onItemDelete={handleItemDelete}
-            />
-          ))}
-
-          {/* Order Actions */}
-          {order.status === "active" && (
-            <div className="border-top pt-3 mt-3">
-              <div className="d-flex gap-2">
-                {progress.servedItems === progress.totalItems && (
-                  <button
-                    className="btn btn-primary"
-                    onClick={() => onOrderStatusChange(order.id, "completed")}
-                  >
-                    <i className="bi bi-check-circle-fill me-1"></i>
-                    Hoàn thành đơn hàng
-                  </button>
-                )}
-
-                <button
-                  className="btn btn-outline-danger"
-                  onClick={() => {
-                    if (confirm("Bạn có chắc chắn muốn hủy đơn hàng này?")) {
-                      onOrderStatusChange(order.id, "cancelled");
-                    }
-                  }}
-                >
-                  <i className="bi bi-x-circle me-1"></i>
-                  Hủy đơn hàng
-                </button>
-
-                <button className="btn btn-outline-success">
-                  <i className="bi bi-credit-card me-1"></i>
-                  Xác nhận thanh toán
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+      {/* Order Details Modal Popup */}
+      <OrderDetailsModal
+        order={order}
+        show={showModal}
+        onClose={() => setShowModal(false)}
+        onItemStatusChange={onItemStatusChange}
+        onOrderStatusChange={onOrderStatusChange}
+        onItemDelete={onItemDelete}
+      />
     </div>
   );
 };
