@@ -546,7 +546,7 @@ const AdminOrders: React.FC = () => {
                     )}
                 </div>
             </div>
-            
+
             {/* Order Details Modal */}
             {selectedOrder && (
                 <AdminOrderDetailsModal

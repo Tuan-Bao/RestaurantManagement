@@ -66,33 +66,6 @@ const OrderDetailsModal: React.FC<OrderDetailsModalProps> = ({
                         ))}
                     </div>
                     <div className="modal-footer">
-                        {order.status === "active" && (
-                            <>
-                                <button
-                                    className="btn btn-primary"
-                                    onClick={() => onOrderStatusChange(order.id, "completed")}
-                                    disabled={order.items.some(item => item.status !== "served")}
-                                >
-                                    <i className="bi bi-check-circle-fill me-1"></i>
-                                    Hoàn thành đơn hàng
-                                </button>
-                                <button
-                                    className="btn btn-outline-danger"
-                                    onClick={() => {
-                                        if (confirm("Bạn có chắc chắn muốn hủy đơn hàng này?")) {
-                                            onOrderStatusChange(order.id, "cancelled");
-                                        }
-                                    }}
-                                >
-                                    <i className="bi bi-x-circle me-1"></i>
-                                    Hủy đơn hàng
-                                </button>
-                                <button className="btn btn-outline-success">
-                                    <i className="bi bi-credit-card me-1"></i>
-                                    Xác nhận thanh toán
-                                </button>
-                            </>
-                        )}
                         <button className="btn btn-secondary" onClick={onClose}>
                             Đóng
                         </button>
