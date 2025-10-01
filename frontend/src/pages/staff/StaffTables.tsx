@@ -10,6 +10,8 @@ import ConfirmDialog from '../../components/shared/ConfirmDialog';
 import { tablesApi } from '../../services/tables';
 import { ordersApi } from '../../services/orders';
 import type { Table, Order } from '../../types/restaurant';
+// @ts-ignore
+import { useNotification } from '../../contexts/NotificationContext';
 
 interface Floor {
   id: number;
@@ -18,6 +20,7 @@ interface Floor {
 }
 
 const StaffTables: React.FC = () => {
+  const { showNotification } = useNotification();
   const [activeFloor, setActiveFloor] = useState<number | null>(null);
   const [selectedTable, setSelectedTable] = useState<Table | null>(null);
   const [floors, setFloors] = useState<Floor[]>([]);
@@ -126,15 +129,15 @@ const StaffTables: React.FC = () => {
     try {
       const response = await tablesApi.updateTableStatus(table.id, 'unavailable');
       if (response.data.success) {
-        // Reload tables to get updated status
         await loadTables();
         setShowConfirmDialog(false);
+        showNotification(`Đã mở ${table.name}`, 'success');
       } else {
-        alert('Không thể mở bàn. Vui lòng thử lại.');
+        showNotification('Không thể mở bàn. Vui lòng thử lại.', 'error');
       }
     } catch (error) {
       console.error('Error opening table:', error);
-      alert('Có lỗi xảy ra khi mở bàn');
+      showNotification('Có lỗi xảy ra khi mở bàn', 'error');
     }
   };
 
@@ -149,7 +152,6 @@ const StaffTables: React.FC = () => {
     if (!selectedTable) return;
 
     try {
-      // Get current order for this table
       const response = await ordersApi.getOrderByTable(selectedTable.id);
       if (response.data.success && response.data.data) {
         const order = response.data.data;
@@ -164,11 +166,11 @@ const StaffTables: React.FC = () => {
         setShowOrderModal(false);
         setShowPaymentModal(true);
       } else {
-        alert('Không tìm thấy đơn hàng cho bàn này');
+        showNotification('Không tìm thấy đơn hàng cho bàn này', 'error');
       }
     } catch (error) {
       console.error('Error loading order for payment:', error);
-      alert('Có lỗi xảy ra khi tải thông tin đơn hàng');
+      showNotification('Có lỗi xảy ra khi tải thông tin đơn hàng', 'error');
     }
   };
 
@@ -192,12 +194,13 @@ const StaffTables: React.FC = () => {
       if (response.data.success) {
         await loadTables();
         setShowConfirmDialog(false);
+        showNotification(`Đã đóng ${selectedTable.name}`, 'success');
       } else {
-        alert('Không thể đóng bàn. Vui lòng thử lại.');
+        showNotification('Không thể đóng bàn. Vui lòng thử lại.', 'error');
       }
     } catch (error) {
       console.error('Error closing table:', error);
-      alert('Có lỗi xảy ra khi đóng bàn');
+      showNotification('Có lỗi xảy ra khi đóng bàn', 'error');
     }
   };
 
