@@ -8,9 +8,10 @@ from .models import MenuItem, Recipe
 @receiver(post_save, sender=Ingredient)
 def update_menu_item_status_on_ingredient_change(sender, instance, **kwargs):
     """
-    Tự động cập nhật trạng thái MenuItem khi Ingredient thay đổi trạng thái
-    - Nếu ingredient chuyển sang 'inactive' → MenuItem chuyển sang 'unavailable'
-    - Nếu ingredient chuyển sang 'active' và TẤT CẢ ingredients khác đều active → MenuItem chuyển sang 'available'
+    Tự động cập nhật trạng thái MenuItem khi Ingredient thay đổi
+    - Kiểm tra status: Nếu có ingredient 'inactive' → MenuItem = 'unavailable'
+    - Kiểm tra quantity: Nếu không đủ nguyên liệu để làm món → MenuItem = 'unavailable'
+    - Chỉ khi TẤT CẢ ingredients đều 'active' VÀ đủ số lượng → MenuItem = 'available'
     """
     # Tìm tất cả MenuItem có chứa ingredient này trong recipe
     menu_items_with_ingredient = MenuItem.objects.filter(
@@ -40,12 +41,14 @@ def update_menu_item_status_on_ingredient_change(sender, instance, **kwargs):
 
 def _calculate_menu_item_status(menu_item):
     """
-    Tính toán trạng thái MenuItem dựa trên trạng thái của tất cả ingredients trong recipe
+    Tính toán trạng thái MenuItem dựa trên:
+    1. Trạng thái của tất cả ingredients (active/inactive)
+    2. Số lượng tồn kho có đủ để làm món hay không
     
     Logic:
     - Nếu có BẤT KỲ ingredient nào 'inactive' → MenuItem = 'unavailable'
-    - Nếu TẤT CẢ ingredients đều 'active' → MenuItem = 'available'
-    - Nếu không có recipe → MenuItem giữ nguyên trạng thái hiện tại
+    - Nếu có BẤT KỲ ingredient nào không đủ số lượng → MenuItem = 'unavailable'  
+    - Nếu TẤT CẢ ingredients đều 'active' VÀ đủ số lượng → MenuItem = 'available'
     """
     # Lấy tất cả recipes của menu item này
     recipes = Recipe.objects.filter(
@@ -58,27 +61,69 @@ def _calculate_menu_item_status(menu_item):
         return menu_item.status
     
     inactive_ingredients = []
-    active_ingredients = []
+    insufficient_ingredients = []
+    available_ingredients = []
     
     for recipe in recipes:
-        if recipe.ingredient:
-            if recipe.ingredient.status == 'inactive' or recipe.ingredient.deleted_at:
-                inactive_ingredients.append(recipe.ingredient.name)
-            elif recipe.ingredient.status == 'active':
-                active_ingredients.append(recipe.ingredient.name)
+        if not recipe.ingredient:
+            continue
+            
+        ingredient = recipe.ingredient
+        required_quantity = recipe.quantity_required or 0
+        current_stock = ingredient.stock_quantity or 0
+        
+        # Kiểm tra trạng thái ingredient
+        if ingredient.status == 'inactive' or ingredient.deleted_at:
+            inactive_ingredients.append({
+                'name': ingredient.name,
+                'status': ingredient.status,
+                'deleted': bool(ingredient.deleted_at)
+            })
+            continue
+        
+        # Kiểm tra số lượng tồn kho
+        if current_stock < required_quantity:
+            insufficient_ingredients.append({
+                'name': ingredient.name,
+                'required': float(required_quantity),
+                'current_stock': float(current_stock),
+                'shortage': float(required_quantity - current_stock)
+            })
+        else:
+            available_ingredients.append({
+                'name': ingredient.name,
+                'required': float(required_quantity),
+                'current_stock': float(current_stock),
+                'excess': float(current_stock - required_quantity)
+            })
     
-    # Log chi tiết ingredients
-    total_ingredients = len(inactive_ingredients) + len(active_ingredients)
-    print(f"📊 {menu_item.name} ingredients status:")
-    print(f"   - Active: {len(active_ingredients)}/{total_ingredients}")
-    print(f"   - Inactive: {len(inactive_ingredients)}/{total_ingredients}")
+    # Log chi tiết
+    total_ingredients = len(inactive_ingredients) + len(insufficient_ingredients) + len(available_ingredients)
+    print(f"📊 {menu_item.name} ingredients analysis:")
+    print(f"   - Total ingredients: {total_ingredients}")
+    print(f"   - Available & sufficient: {len(available_ingredients)}")
+    print(f"   - Inactive: {len(inactive_ingredients)}")
+    print(f"   - Insufficient quantity: {len(insufficient_ingredients)}")
     
+    # Kiểm tra từng trường hợp
     if inactive_ingredients:
-        print(f"   - Inactive ingredients: {', '.join(inactive_ingredients)}")
+        print(f"   ❌ Inactive ingredients:")
+        for ing in inactive_ingredients:
+            status_info = "deleted" if ing['deleted'] else f"status={ing['status']}"
+            print(f"      • {ing['name']} ({status_info})")
         return 'unavailable'
-    else:
-        print(f"   - All ingredients are active")
-        return 'available'
+    
+    if insufficient_ingredients:
+        print(f"   ❌ Insufficient ingredients:")
+        for ing in insufficient_ingredients:
+            print(f"      • {ing['name']}: need {ing['required']}, have {ing['current_stock']} (short {ing['shortage']})")
+        return 'unavailable'
+    
+    print(f"   ✅ All ingredients available & sufficient:")
+    for ing in available_ingredients:
+        print(f"      • {ing['name']}: need {ing['required']}, have {ing['current_stock']} (+{ing['excess']})")
+    
+    return 'available'
 
 
 # Utility function để check trạng thái menu item thủ công
@@ -91,11 +136,29 @@ def check_menu_item_availability(menu_item_id):
         current_status = menu_item.status
         calculated_status = _calculate_menu_item_status(menu_item)
         
+        # Chi tiết các ingredient requirements
+        recipes = Recipe.objects.filter(
+            menu_item=menu_item,
+            deleted_at__isnull=True
+        ).select_related('ingredient')
+        
+        ingredients_info = []
+        for recipe in recipes:
+            if recipe.ingredient:
+                ingredients_info.append({
+                    'name': recipe.ingredient.name,
+                    'required': float(recipe.quantity_required or 0),
+                    'current_stock': float(recipe.ingredient.stock_quantity or 0),
+                    'status': recipe.ingredient.status,
+                    'is_sufficient': (recipe.ingredient.stock_quantity or 0) >= (recipe.quantity_required or 0)
+                })
+        
         return {
             'menu_item': menu_item.name,
             'current_status': current_status,
             'calculated_status': calculated_status,
-            'needs_update': current_status != calculated_status
+            'needs_update': current_status != calculated_status,
+            'ingredients': ingredients_info
         }
     except MenuItem.DoesNotExist:
         return {'error': f'MenuItem with id {menu_item_id} not found'}

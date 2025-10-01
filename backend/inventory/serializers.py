@@ -17,6 +17,47 @@ class IngredientSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'is_low_stock', 'created_at', 'updated_at']
 
 
+class IngredientUpdateSerializer(serializers.ModelSerializer):
+    """Serializer cho cập nhật thông tin nguyên liệu (chỉ name và unit)"""
+    name = serializers.CharField(max_length=200, help_text="Tên nguyên liệu")
+    unit = serializers.ChoiceField(
+        choices=Ingredient.UNIT_CHOICES, 
+        help_text="Đơn vị tính"
+    )
+    
+    class Meta:
+        model = Ingredient
+        fields = ['name', 'unit']
+        
+    def validate_name(self, value):
+        if not value or not value.strip():
+            raise serializers.ValidationError("Tên nguyên liệu không được để trống")
+        
+        # Kiểm tra trùng tên (ngoại trừ ingredient hiện tại)
+        instance = getattr(self, 'instance', None)
+        if instance:
+            existing = Ingredient.objects.filter(
+                name__iexact=value.strip(),
+                deleted_at__isnull=True
+            ).exclude(id=instance.id)
+        else:
+            existing = Ingredient.objects.filter(
+                name__iexact=value.strip(),
+                deleted_at__isnull=True
+            )
+            
+        if existing.exists():
+            raise serializers.ValidationError("Tên nguyên liệu đã tồn tại")
+        
+        return value.strip()
+    
+    def update(self, instance, validated_data):
+        instance.name = validated_data.get('name', instance.name)
+        instance.unit = validated_data.get('unit', instance.unit)
+        instance.save()
+        return instance
+
+
 class StockInCreateSerializer(serializers.ModelSerializer):
     """Serializer cho nhập kho - có thể tạo nguyên liệu mới hoặc cập nhật nguyên liệu có sẵn"""
     # Thông tin nguyên liệu

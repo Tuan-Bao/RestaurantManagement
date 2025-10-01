@@ -9,6 +9,7 @@ from decimal import Decimal
 from .models import Ingredient, StockIn, StockOut
 from .serializers import (
     IngredientSerializer,
+    IngredientUpdateSerializer,
     StockInCreateSerializer,
     StockInSerializer, 
     StockOutCreateSerializer,
@@ -65,6 +66,40 @@ class WarehouseListView(generics.ListAPIView):
                 'low_stock_items': low_stock_count
             }
         })
+
+
+class WarehouseUpdateView(generics.UpdateAPIView):
+    """
+    PATCH /api/inventory/warehouse/{id}/ - Cập nhật tên và đơn vị nguyên liệu (Admin only)
+    """
+    queryset = Ingredient.objects.filter(deleted_at__isnull=True)
+    serializer_class = IngredientUpdateSerializer
+    permission_classes = [IsAuthenticated, IsAdminUser]
+    http_method_names = ['patch']  # Chỉ cho phép PATCH method
+    
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        
+        if serializer.is_valid():
+            updated_ingredient = serializer.save()
+            
+            return Response({
+                'success': True,
+                'message': 'Cập nhật thông tin nguyên liệu thành công',
+                'data': IngredientSerializer(updated_ingredient).data
+            }, status=status.HTTP_200_OK)
+        
+        return Response({
+            'success': False,
+            'message': 'Cập nhật thông tin nguyên liệu thất bại',
+            'errors': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    def partial_update(self, request, *args, **kwargs):
+        kwargs['partial'] = True
+        return self.update(request, *args, **kwargs)
 
 
 class StockInListCreateView(generics.ListCreateAPIView):
