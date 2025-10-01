@@ -122,13 +122,14 @@ class OrderHistorySerializer(serializers.ModelSerializer):
     table_floor = serializers.IntegerField(source='table.floor', read_only=True)
     user_name = serializers.CharField(source='user.name', read_only=True)
     table_info = serializers.SerializerMethodField()
+    order_items = serializers.SerializerMethodField()  # Add order_items
     total_amount = serializers.SerializerMethodField()
     payment_info = serializers.SerializerMethodField()
     
     class Meta:
         model = Order
         fields = ['id', 'table', 'table_name', 'table_floor', 'user', 'user_name', 'table_info', 
-                 'status', 'total_amount', 'payment_info', 'created_at', 'closed_at', 'updated_at']
+                 'status', 'order_items', 'total_amount', 'payment_info', 'created_at', 'closed_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
     
     def get_table_info(self, obj):
@@ -141,6 +142,29 @@ class OrderHistorySerializer(serializers.ModelSerializer):
                 'status': obj.table.status
             }
         return None
+    
+    def get_order_items(self, obj):
+        """Get order items with detailed information"""
+        items = obj.order_items.all()
+        result = []
+        
+        for item in items:
+            result.append({
+                'id': item.id,
+                'menu_item': item.menu_item_id,
+                'menu_item_name': item.menu_item.name,
+                'menu_item_price': item.menu_item.price,
+                'status': item.status,
+                'price_each': item.price_each,
+                'quantity': item.quantity,
+                'note': item.note,
+                'subtotal': (item.quantity or 0) * (item.price_each or 0),
+                'created_at': item.created_at,
+                'updated_at': item.updated_at
+            })
+        
+        # Sort by creation time
+        return sorted(result, key=lambda x: x['created_at'])
     
     def get_total_amount(self, obj):
         return sum((item.quantity or 0) * (item.price_each or 0) for item in obj.order_items.all())

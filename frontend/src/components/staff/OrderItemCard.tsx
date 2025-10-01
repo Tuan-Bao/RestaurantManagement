@@ -32,6 +32,9 @@ const OrderItemCard: React.FC<OrderItemCardProps> = ({
 
   const statusInfo = getStatusBadge(item.status);
 
+  // Check if item is cancelled in backend
+  const isCancelled = (item as any)?.backendStatus === 'cancelled';
+
   const getNextStatus = (
     currentStatus: OrderItem["status"]
   ): OrderItem["status"] | null => {
@@ -81,19 +84,33 @@ const OrderItemCard: React.FC<OrderItemCardProps> = ({
           </div>
 
           <div className="ms-3 text-end">
-            <span className={`badge bg-${statusInfo.color} mb-2`}>
-              <i className={`${statusInfo.icon} me-1`}></i>
-              {statusInfo.text}
-            </span>
+            {isCancelled ? (
+              <span className="badge bg-danger mb-2">
+                <i className="bi bi-x-circle me-1"></i>
+                Đã hủy
+              </span>
+            ) : (
+              <span className={`badge bg-${statusInfo.color} mb-2`}>
+                <i className={`${statusInfo.icon} me-1`}></i>
+                {statusInfo.text}
+              </span>
+            )}
           </div>
         </div>
 
         {/* Action Buttons */}
         <div className="d-flex gap-2 mt-3">
-          {nextStatus && (
+          {!isCancelled && nextStatus && (
             <button
               className={`btn btn-sm btn-${getStatusBadge(nextStatus).color}`}
-              onClick={() => onStatusChange(item.id, nextStatus)}
+              onClick={() => {
+                console.log('Changing item status:', {
+                  itemId: item.id,
+                  from: item.status,
+                  to: nextStatus
+                });
+                onStatusChange(item.id, nextStatus);
+              }}
             >
               <i className={`${getStatusBadge(nextStatus).icon} me-1`}></i>
               {nextStatus === "preparing" && "Bắt đầu làm"}
@@ -102,7 +119,7 @@ const OrderItemCard: React.FC<OrderItemCardProps> = ({
             </button>
           )}
 
-          {item.status === "pending" && (
+          {!isCancelled && item.status === "pending" && (
             <button
               className="btn btn-sm btn-outline-danger"
               onClick={() => {
@@ -114,6 +131,10 @@ const OrderItemCard: React.FC<OrderItemCardProps> = ({
               <i className="bi bi-trash me-1"></i>
               Xóa món
             </button>
+          )}
+
+          {isCancelled && (
+            <small className="text-muted">Món ăn này đã bị hủy</small>
           )}
         </div>
       </div>
