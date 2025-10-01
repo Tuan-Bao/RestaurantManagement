@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useCallback } from "react";
 import AdminLayout from "../../layouts/AdminLayout";
+import AdminOrderDetailsModal from "../../components/admin/AdminOrderDetailsModal";
 import type { Floor, Order } from "../../types/order";
 
 const AdminOrders: React.FC = () => {
     const [activeFloor, setActiveFloor] = useState<number>(0); // 0 = all floors
     const [floors, setFloors] = useState<Floor[]>([]);
     const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
+    const [showOrderModal, setShowOrderModal] = useState(false);
+    const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [filters, setFilters] = useState({
         status: "all",
         search: "",
@@ -58,6 +61,25 @@ const AdminOrders: React.FC = () => {
                                 specialInstructions: "Không rau thơm",
                                 estimatedTime: 10,
                             },
+                            {
+                                id: 3,
+                                menuItemId: 103,
+                                menuItemName: "Cà phê sữa đá",
+                                quantity: 3,
+                                unitPrice: 25000,
+                                totalPrice: 75000,
+                                status: "served",
+                            },
+                            {
+                                id: 4,
+                                menuItemId: 104,
+                                menuItemName: "Chè ba màu",
+                                quantity: 2,
+                                unitPrice: 20000,
+                                totalPrice: 40000,
+                                status: "pending",
+                                specialInstructions: "Ít đường",
+                            },
                         ],
                     },
                     {
@@ -80,6 +102,24 @@ const AdminOrders: React.FC = () => {
                                 quantity: 2,
                                 unitPrice: 70000,
                                 totalPrice: 140000,
+                                status: "served",
+                            },
+                            {
+                                id: 6,
+                                menuItemId: 106,
+                                menuItemName: "Nem nướng",
+                                quantity: 1,
+                                unitPrice: 45000,
+                                totalPrice: 45000,
+                                status: "served",
+                            },
+                            {
+                                id: 7,
+                                menuItemId: 107,
+                                menuItemName: "Trà đá",
+                                quantity: 2,
+                                unitPrice: 10000,
+                                totalPrice: 20000,
                                 status: "served",
                             },
                         ],
@@ -113,6 +153,24 @@ const AdminOrders: React.FC = () => {
                                 totalPrice: 350000,
                                 status: "pending",
                                 estimatedTime: 25,
+                            },
+                            {
+                                id: 9,
+                                menuItemId: 109,
+                                menuItemName: "Rau sống",
+                                quantity: 1,
+                                unitPrice: 30000,
+                                totalPrice: 30000,
+                                status: "pending",
+                            },
+                            {
+                                id: 10,
+                                menuItemId: 110,
+                                menuItemName: "Nước ngọt",
+                                quantity: 4,
+                                unitPrice: 15000,
+                                totalPrice: 60000,
+                                status: "pending",
                             },
                         ],
                     },
@@ -220,6 +278,16 @@ const AdminOrders: React.FC = () => {
 
     // Calculate stats from filtered orders
     const stats = getOrderStats();
+
+    const handleViewOrder = (order: Order) => {
+        setSelectedOrder(order);
+        setShowOrderModal(true);
+    };
+
+    const handleCloseModal = () => {
+        setShowOrderModal(false);
+        setSelectedOrder(null);
+    };
 
     return (
         <AdminLayout>
@@ -441,6 +509,7 @@ const AdminOrders: React.FC = () => {
                                                         <button
                                                             className="btn btn-sm btn-outline-primary"
                                                             title="Xem chi tiết"
+                                                            onClick={() => handleViewOrder(order)}
                                                         >
                                                             <i className="bi bi-eye"></i>
                                                         </button>
@@ -477,6 +546,15 @@ const AdminOrders: React.FC = () => {
                     )}
                 </div>
             </div>
+            
+            {/* Order Details Modal */}
+            {selectedOrder && (
+                <AdminOrderDetailsModal
+                    order={selectedOrder}
+                    show={showOrderModal}
+                    onClose={handleCloseModal}
+                />
+            )}
         </AdminLayout>
     );
 };
