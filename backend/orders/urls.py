@@ -12,6 +12,7 @@ urlpatterns = [
     # Order Items endpoints
     path('<int:order_id>/items/', views.OrderItemBulkUpdateView.as_view(), name='order-item-bulk-update'),
     path('items/<int:pk>/status/', views.OrderItemStatusUpdateView.as_view(), name='order-item-status-update'),
+    path('items/<int:pk>/', views.OrderItemDeleteView.as_view(), name='order-item-delete'),
     
     # Payment endpoints
     path('<int:order_id>/payments/', views.PaymentCreateView.as_view(), name='payment-create'),
@@ -39,6 +40,8 @@ urlpatterns = [
 #        • ordered → cooking: Chỉ chấp nhận từ trạng thái "ordered"
 #        • cooking → done: Chỉ chấp nhận từ trạng thái "cooking"  
 #        • cancelled: Chấp nhận từ mọi trạng thái trừ "done"
+# DELETE /api/orders/items/{id}/               - Xóa order item
+#        Chỉ cho phép xóa items có status "ordered" hoặc "cancelled"
 
 # 💰 PAYMENT APIs:
 # POST   /api/orders/{order_id}/payments/     - Tạo thanh toán mới
