@@ -2,9 +2,13 @@ from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.db import transaction
 from decimal import Decimal
+import logging
 from .models import OrderItem
 from inventory.models import StockOut, Ingredient
 from menu.models import Recipe
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 
 @receiver(pre_save, sender=OrderItem)
@@ -63,6 +67,7 @@ def _validate_ingredients_availability(order_item):
     Kiểm tra tính sẵn có của nguyên liệu trước khi nấu
     """
     if not order_item.menu_item:
+        logger.warning(f"Order item {order_item.id} has no menu_item")
         return
     
     # Lấy công thức cho món ăn
@@ -71,6 +76,10 @@ def _validate_ingredients_availability(order_item):
         deleted_at__isnull=True
     ).select_related('ingredient')
     
+    if not recipes.exists():
+        logger.warning(f"No recipes found for menu item: {order_item.menu_item.name}")
+        return
+    
     insufficient_ingredients = []
     
     for recipe in recipes:
@@ -78,12 +87,17 @@ def _validate_ingredients_availability(order_item):
             required_quantity = recipe.quantity_required * (order_item.quantity or 1)
             current_stock = recipe.ingredient.stock_quantity or 0
             
+            logger.debug(
+                f"Checking ingredient {recipe.ingredient.name}: "
+                f"required={required_quantity}, available={current_stock}"
+            )
+            
             if current_stock < required_quantity:
                 insufficient_ingredients.append({
                     'ingredient': recipe.ingredient.name,
-                    'required': required_quantity,
-                    'available': current_stock,
-                    'unit': recipe.ingredient.unit
+                    'required': float(required_quantity),
+                    'available': float(current_stock),
+                    'unit': recipe.ingredient.unit or 'unit'
                 })
     
     if insufficient_ingredients:
@@ -94,9 +108,23 @@ def _validate_ingredients_availability(order_item):
                 f"chỉ có {item['available']} {item['unit']}"
             )
         
-        raise ValueError(
+        error_message = (
             f"Không đủ nguyên liệu để nấu {order_item.menu_item.name}. "
             f"Chi tiết: {'; '.join(error_details)}"
+        )
+        
+        # Log lỗi để debug
+        logger.warning(
+            f"Ingredient shortage for Order Item {order_item.id} ({order_item.menu_item.name}): "
+            f"{error_message}"
+        )
+        
+        # Throw ValueError để view catch và trả response
+        raise ValueError(error_message)
+    
+    else:
+        logger.info(
+            f"All ingredients available for Order Item {order_item.id} ({order_item.menu_item.name})"
         )
 
 

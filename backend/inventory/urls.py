@@ -1,6 +1,7 @@
 from django.urls import path
 from .views import (
     WarehouseListView,
+    WarehouseUpdateView,
     StockInListCreateView,
     StockInDetailView,
     StockOutListCreateView,
@@ -12,6 +13,7 @@ app_name = 'inventory'
 urlpatterns = [
     # Warehouse (Kho) endpoints - Xem danh sách nguyên liệu trong kho
     path('warehouse/', WarehouseListView.as_view(), name='warehouse-list'),
+    path('warehouse/<int:pk>/', WarehouseUpdateView.as_view(), name='warehouse-update'),
     
     # Stock-in endpoints - Nhập kho (tự động tạo/cập nhật nguyên liệu)
     path('stock-in/', StockInListCreateView.as_view(), name='stock-in-list-create'),
@@ -25,6 +27,7 @@ urlpatterns = [
 # APIs:
 # Warehouse (Kho):
 # GET    /api/inventory/warehouse/?name=...&status=...   - Xem danh sách nguyên liệu trong kho (Staff & Admin)
+# PATCH  /api/inventory/warehouse/{id}/                  - Cập nhật tên và đơn vị nguyên liệu (Admin only)
 
 # Stock-in (Nhập kho):
 # GET  /api/inventory/stock-in/?ingredient_name=...&date_from=...&date_to=... - Danh sách lịch sử nhập (Staff & Admin)  
