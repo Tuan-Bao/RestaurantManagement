@@ -1,15 +1,19 @@
 import React, { useState, useEffect } from "react";
-import { Row, Col, Card, Input, Select, Modal, Spin, Typography, message } from "antd";
+import { Row, Col, Card, Input, Select, Modal, Spin, Typography, message, Button, Form, Upload, Space } from "antd";
+import { PlusOutlined, EditOutlined, DeleteOutlined, UploadOutlined } from "@ant-design/icons";
 import AdminLayout from "../../layouts/AdminLayout";
 import { menuApi } from "../../services/menu";
 import type { Category, MenuItem } from "../../types/restaurant";
+import type { UploadFile } from "antd/es/upload/interface";
 import "antd/dist/reset.css";
 
 const { Title } = Typography;
 const { Search } = Input;
 
 const AdminMenu: React.FC = () => {
+  const [form] = Form.useForm();
   const [loading, setLoading] = useState(true);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [filteredItems, setFilteredItems] = useState<MenuItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -20,6 +24,13 @@ const AdminMenu: React.FC = () => {
   const [searchName, setSearchName] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<number | undefined>();
   const [selectedStatus, setSelectedStatus] = useState<"available" | "unavailable" | undefined>();
+  
+  // CRUD modals state
+  const [isMenuItemModalOpen, setIsMenuItemModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [editingMenuItem, setEditingMenuItem] = useState<MenuItem | null>(null);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
 
   // Fetch menu data on component mount
   useEffect(() => {
@@ -36,10 +47,19 @@ const AdminMenu: React.FC = () => {
       ]);
 
       if (categoriesRes.data.success && itemsRes.data.success) {
-        setCategories(categoriesRes.data.data);
+        const categoriesData = categoriesRes.data.data;
+        setCategories(categoriesData);
         const menuItemsData = itemsRes.data.data;
-        // Don't need to set menuItems anymore as we only use filteredItems
-        setFilteredItems(menuItemsData);
+        
+        // Sort menu items by category
+        const sortedItems = [...menuItemsData].sort((a, b) => {
+          const catA = categoriesData.find(c => c.id === a.category_id)?.name || '';
+          const catB = categoriesData.find(c => c.id === b.category_id)?.name || '';
+          return catA.localeCompare(catB);
+        });
+        
+        setMenuItems(sortedItems);
+        setFilteredItems(sortedItems);
         
         // Calculate stats
         const availableCount = menuItemsData.filter(
@@ -61,16 +81,142 @@ const AdminMenu: React.FC = () => {
   };
 
   useEffect(() => {
-    const filtered = filteredItems.filter((item: MenuItem) => {
+    const filtered = menuItems.filter((item: MenuItem) => {
       const matchesName = !searchName || item.name.toLowerCase().includes(searchName.toLowerCase());
       const matchesCategory = !selectedCategory || item.category_id === selectedCategory;
       const matchesStatus = !selectedStatus || item.status === selectedStatus;
       return matchesName && matchesCategory && matchesStatus;
     });
     setFilteredItems(filtered);
-  }, [searchName, selectedCategory, selectedStatus, filteredItems]);
+  }, [searchName, selectedCategory, selectedStatus, menuItems]);
 
-  // Add any additional handlers here
+  // CRUD handlers for menu items
+  const handleCreateMenuItem = async (values: any) => {
+    try {
+      const formData = new FormData();
+      Object.keys(values).forEach(key => {
+        if (key === 'image' && values[key]?.[0]) {
+          formData.append('image', values[key][0].originFileObj);
+        } else {
+          formData.append(key, values[key]);
+        }
+      });
+
+      const response = await menuApi.createMenuItem(formData);
+      if (response.data.success) {
+        message.success('Thêm món ăn thành công');
+        setIsMenuItemModalOpen(false);
+        form.resetFields();
+        fetchData();
+      } else {
+        message.error(response.data.message || 'Thêm món ăn thất bại');
+      }
+    } catch (error) {
+      console.error('Error creating menu item:', error);
+      message.error('Thêm món ăn thất bại');
+    }
+  };
+
+  const handleUpdateMenuItem = async (values: any) => {
+    if (!editingMenuItem) return;
+    
+    try {
+      const formData = new FormData();
+      Object.keys(values).forEach(key => {
+        if (key === 'image' && values[key]?.[0]) {
+          formData.append('image', values[key][0].originFileObj);
+        } else {
+          formData.append(key, values[key]);
+        }
+      });
+
+      const response = await menuApi.updateMenuItem(editingMenuItem.id, formData);
+      if (response.data.success) {
+        message.success('Cập nhật món ăn thành công');
+        setIsMenuItemModalOpen(false);
+        setEditingMenuItem(null);
+        form.resetFields();
+        fetchData();
+      } else {
+        message.error(response.data.message || 'Cập nhật món ăn thất bại');
+      }
+    } catch (error) {
+      console.error('Error updating menu item:', error);
+      message.error('Cập nhật món ăn thất bại');
+    }
+  };
+
+  const handleDeleteMenuItem = async (id: number) => {
+    try {
+      const response = await menuApi.deleteMenuItem(id);
+      if (response.data.success) {
+        message.success('Xóa món ăn thành công');
+        setIsDeleteModalOpen(false);
+        setSelectedItem(null);
+        fetchData();
+      } else {
+        message.error(response.data.message || 'Xóa món ăn thất bại');
+      }
+    } catch (error) {
+      console.error('Error deleting menu item:', error);
+      message.error('Xóa món ăn thất bại');
+    }
+  };
+
+  // CRUD handlers for categories
+  const handleCreateCategory = async (values: any) => {
+    try {
+      const response = await menuApi.createCategory(values);
+      if (response.data.success) {
+        message.success('Thêm danh mục thành công');
+        setIsCategoryModalOpen(false);
+        form.resetFields();
+        fetchData();
+      } else {
+        message.error(response.data.message || 'Thêm danh mục thất bại');
+      }
+    } catch (error) {
+      console.error('Error creating category:', error);
+      message.error('Thêm danh mục thất bại');
+    }
+  };
+
+  const handleUpdateCategory = async (values: any) => {
+    if (!editingCategory) return;
+
+    try {
+      const response = await menuApi.updateCategory(editingCategory.id, values);
+      if (response.data.success) {
+        message.success('Cập nhật danh mục thành công');
+        setIsCategoryModalOpen(false);
+        setEditingCategory(null);
+        form.resetFields();
+        fetchData();
+      } else {
+        message.error(response.data.message || 'Cập nhật danh mục thất bại');
+      }
+    } catch (error) {
+      console.error('Error updating category:', error);
+      message.error('Cập nhật danh mục thất bại');
+    }
+  };
+
+  const handleDeleteCategory = async (id: number) => {
+    try {
+      const response = await menuApi.deleteCategory(id);
+      if (response.data.success) {
+        message.success('Xóa danh mục thành công');
+        setIsDeleteModalOpen(false);
+        setEditingCategory(null);
+        fetchData();
+      } else {
+        message.error(response.data.message || 'Xóa danh mục thất bại');
+      }
+    } catch (error) {
+      console.error('Error deleting category:', error);
+      message.error('Xóa danh mục thất bại');
+    }
+  };
 
   return (
     <AdminLayout>
@@ -95,8 +241,63 @@ const AdminMenu: React.FC = () => {
           </Col>
         </Row>
 
-        {/* Filters */}
+        {/* Action Buttons */}
         <Row gutter={[16, 16]} style={{ marginBottom: "24px" }}>
+          <Col span={24}>
+            <Space>
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => {
+                  setEditingMenuItem(null);
+                  setIsMenuItemModalOpen(true);
+                }}
+              >
+                Thêm món ăn
+              </Button>
+              <Button
+                icon={<PlusOutlined />}
+                onClick={() => {
+                  setEditingCategory(null);
+                  setIsCategoryModalOpen(true);
+                }}
+              >
+                Thêm danh mục
+              </Button>
+            </Space>
+          </Col>
+        </Row>
+
+        {/* Filters */}
+        {/* Action Buttons */}
+      <Row gutter={[16, 16]} style={{ marginBottom: "24px" }}>
+        <Col span={24}>
+          <Space>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => {
+                setEditingMenuItem(null);
+                setIsMenuItemModalOpen(true);
+              }}
+            >
+              Thêm món ăn
+            </Button>
+            <Button
+              icon={<PlusOutlined />}
+              onClick={() => {
+                setEditingCategory(null);
+                setIsCategoryModalOpen(true);
+              }}
+            >
+              Thêm danh mục
+            </Button>
+          </Space>
+        </Col>
+      </Row>
+
+      {/* Filters */}
+      <Row gutter={[16, 16]} style={{ marginBottom: "24px" }}>
           <Col span={8}>
             <Search
               placeholder="Tìm kiếm theo tên"
@@ -206,16 +407,132 @@ const AdminMenu: React.FC = () => {
                   target.src = "https://via.placeholder.com/800x400?text=No+Image";
                 }}
               />
-              <p><strong>Danh mục:</strong> {categories.find(c => c.id === selectedItem.category_id)?.name}</p>
-              <p><strong>Giá:</strong> {selectedItem.price.toLocaleString("vi-VN")}đ</p>
-              <p><strong>Trạng thái:</strong> {selectedItem.status === "available" ? "Có sẵn" : "Hết món"}</p>
-              {selectedItem.description && (
-                <p><strong>Mô tả:</strong> {selectedItem.description}</p>
-              )}
-              <p><strong>Thời gian tạo:</strong> {new Date(selectedItem.created_at).toLocaleDateString("vi-VN")}</p>
-              <p><strong>Cập nhật lần cuối:</strong> {new Date(selectedItem.updated_at).toLocaleDateString("vi-VN")}</p>
+              <div>
+                <p><strong>Danh mục:</strong> {categories.find(c => c.id === selectedItem.category_id)?.name}</p>
+                <p><strong>Giá:</strong> {selectedItem.price.toLocaleString("vi-VN")}đ</p>
+                <p><strong>Trạng thái:</strong> {selectedItem.status === "available" ? "Có sẵn" : "Hết món"}</p>
+                {selectedItem.description && (
+                  <p><strong>Mô tả:</strong> {selectedItem.description}</p>
+                )}
+                <p><strong>Thời gian tạo:</strong> {new Date(selectedItem.created_at).toLocaleDateString("vi-VN")}</p>
+                <p><strong>Cập nhật lần cuối:</strong> {new Date(selectedItem.updated_at).toLocaleDateString("vi-VN")}</p>
+              </div>
+              <div style={{ marginTop: "24px" }}>
+                <Button type="primary" icon={<EditOutlined />} onClick={() => {
+                  setEditingMenuItem(selectedItem);
+                  setSelectedItem(null);
+                  setIsMenuItemModalOpen(true);
+                }}>
+                  Sửa món ăn
+                </Button>
+                <Button type="primary" danger icon={<DeleteOutlined />} style={{ marginLeft: "8px" }} onClick={() => {
+                  setIsDeleteModalOpen(true);
+                }}>
+                  Xóa món ăn
+                </Button>
+              </div>
             </div>
           )}
+        </Modal>
+
+        {/* Menu Item Form Modal */}
+        <Modal
+          title={editingMenuItem ? "Sửa món ăn" : "Thêm món ăn mới"}
+          open={isMenuItemModalOpen}
+          onCancel={() => {
+            setIsMenuItemModalOpen(false);
+            setEditingMenuItem(null);
+            form.resetFields();
+          }}
+          footer={null}
+        >
+          <Form
+            form={form}
+            layout="vertical"
+            onFinish={editingMenuItem ? handleUpdateMenuItem : handleCreateMenuItem}
+            initialValues={editingMenuItem || {}}
+          >
+            <Form.Item name="name" label="Tên món" rules={[{ required: true }]}>
+              <Input />
+            </Form.Item>
+            <Form.Item name="category_id" label="Danh mục" rules={[{ required: true }]}>
+              <Select>
+                {categories.map(category => (
+                  <Select.Option key={category.id} value={category.id}>
+                    {category.name}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+            <Form.Item name="price" label="Giá tiền" rules={[{ required: true }]}>
+              <Input type="number" />
+            </Form.Item>
+            <Form.Item name="description" label="Mô tả">
+              <Input.TextArea />
+            </Form.Item>
+            <Form.Item name="status" label="Trạng thái" rules={[{ required: true }]}>
+              <Select>
+                <Select.Option value="available">Có sẵn</Select.Option>
+                <Select.Option value="unavailable">Hết món</Select.Option>
+              </Select>
+            </Form.Item>
+            <Form.Item name="image" label="Hình ảnh" valuePropName="fileList" getValueFromEvent={(e) => {
+              if (Array.isArray(e)) {
+                return e;
+              }
+              return e?.fileList;
+            }}>
+              <Upload beforeUpload={() => false} maxCount={1} listType="picture-card">
+                <Button icon={<UploadOutlined />}>Tải ảnh lên</Button>
+              </Upload>
+            </Form.Item>
+            <Form.Item>
+              <Button type="primary" htmlType="submit">
+                {editingMenuItem ? "Cập nhật" : "Thêm mới"}
+              </Button>
+            </Form.Item>
+          </Form>
+        </Modal>
+
+        {/* Category Form Modal */}
+        <Modal
+          title={editingCategory ? "Sửa danh mục" : "Thêm danh mục mới"}
+          open={isCategoryModalOpen}
+          onCancel={() => {
+            setIsCategoryModalOpen(false);
+            setEditingCategory(null);
+            form.resetFields();
+          }}
+          footer={null}
+        >
+          <Form
+            form={form}
+            layout="vertical"
+            onFinish={editingCategory ? handleUpdateCategory : handleCreateCategory}
+            initialValues={editingCategory || {}}
+          >
+            <Form.Item name="name" label="Tên danh mục" rules={[{ required: true }]}>
+              <Input />
+            </Form.Item>
+            <Form.Item name="description" label="Mô tả">
+              <Input.TextArea />
+            </Form.Item>
+            <Form.Item>
+              <Button type="primary" htmlType="submit">
+                {editingCategory ? "Cập nhật" : "Thêm mới"}
+              </Button>
+            </Form.Item>
+          </Form>
+        </Modal>
+
+        {/* Delete Confirmation Modal */}
+        <Modal
+          title="Xác nhận xóa"
+          open={isDeleteModalOpen}
+          onCancel={() => setIsDeleteModalOpen(false)}
+          onOk={() => selectedItem && handleDeleteMenuItem(selectedItem.id)}
+        >
+          <p>Bạn có chắc chắn muốn xóa món ăn này?</p>
         </Modal>
       </div>
     </AdminLayout>
