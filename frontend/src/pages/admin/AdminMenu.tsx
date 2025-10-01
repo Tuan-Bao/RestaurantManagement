@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { Row, Col, Card, Input, Select, Modal, Spin, Typography, message, Button, Form, Upload, Space } from "antd";
+import { Row, Col, Card, Input, Select, Modal, Spin, Typography, message, Button, Form, Upload, Space, List, Empty } from "antd";
 import { PlusOutlined, EditOutlined, DeleteOutlined, UploadOutlined } from "@ant-design/icons";
 import AdminLayout from "../../layouts/AdminLayout";
 import { menuApi } from "../../services/menu";
-import type { Category, MenuItem } from "../../types/restaurant";
+import { inventoryApi } from "../../services/inventory";
+import type { Category, MenuItem, Recipe, Ingredient } from "../../types/restaurant";
 import type { UploadFile } from "antd/es/upload/interface";
 import "antd/dist/reset.css";
 
@@ -29,13 +30,37 @@ const AdminMenu: React.FC = () => {
   const [isMenuItemModalOpen, setIsMenuItemModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [isRecipeModalOpen, setIsRecipeModalOpen] = useState(false);
   const [editingMenuItem, setEditingMenuItem] = useState<MenuItem | null>(null);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
+  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
 
   // Fetch menu data on component mount
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Fetch ingredients
+  const fetchIngredients = async () => {
+    try {
+      // TODO: Add inventoryApi to fetch ingredients
+      const response = await inventoryApi.getIngredients();
+      if (response.data.success) {
+        setIngredients(response.data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching ingredients:', error);
+      message.error('Không thể tải danh sách nguyên liệu');
+    }
+  };
+
+  // Watch recipe modal open state
+  useEffect(() => {
+    if (isRecipeModalOpen) {
+      fetchIngredients();
+    }
+  }, [isRecipeModalOpen]);
 
   // Fetch categories and menu items
   const fetchData = async () => {
@@ -215,6 +240,76 @@ const AdminMenu: React.FC = () => {
     } catch (error) {
       console.error('Error deleting category:', error);
       message.error('Xóa danh mục thất bại');
+    }
+  };
+
+  // Recipe management handlers
+  const handleAddRecipe = async (values: any) => {
+    if (!selectedItem) return;
+    
+    try {
+      const response = await menuApi.addIngredients(selectedItem.id, [{
+        ingredient_id: values.ingredient,
+        quantity_required: values.quantity_required
+      }]);
+      if (response.data.success) {
+        message.success('Thêm nguyên liệu thành công');
+        setIsRecipeModalOpen(false);
+        // Refresh menu item details
+        const menuItemResponse = await menuApi.getMenuItem(selectedItem.id);
+        if (menuItemResponse.data.success) {
+          setSelectedItem(menuItemResponse.data.data);
+        }
+      } else {
+        message.error(response.data.message || 'Thêm nguyên liệu thất bại');
+      }
+    } catch (error) {
+      console.error('Error adding recipe:', error);
+      message.error('Thêm nguyên liệu thất bại');
+    }
+  };
+
+  const handleUpdateRecipe = async (values: any) => {
+    if (!editingRecipe) return;
+    
+    try {
+      const response = await menuApi.updateIngredient(editingRecipe.id, values);
+      if (response.data.success) {
+        message.success('Cập nhật số lượng thành công');
+        setIsRecipeModalOpen(false);
+        setEditingRecipe(null);
+        if (selectedItem) {
+          const menuItemResponse = await menuApi.getMenuItem(selectedItem.id);
+          if (menuItemResponse.data.success) {
+            setSelectedItem(menuItemResponse.data.data);
+          }
+        }
+      } else {
+        message.error(response.data.message || 'Cập nhật số lượng thất bại');
+      }
+    } catch (error) {
+      console.error('Error updating recipe:', error);
+      message.error('Cập nhật số lượng thất bại');
+    }
+  };
+
+  const handleDeleteRecipe = async (recipeId: number) => {
+    try {
+      const response = await menuApi.removeIngredient(recipeId);
+      if (response.data.success) {
+        message.success('Xóa nguyên liệu thành công');
+        if (selectedItem) {
+          const menuItemResponse = await menuApi.getMenuItem(selectedItem.id);
+          if (menuItemResponse.data.success) {
+            setSelectedItem(menuItemResponse.data.data);
+          }
+        }
+      } else {
+        message.error(response.data.message || 'Xóa nguyên liệu thất bại');
+      }
+    } catch (error) {
+      console.error('Error deleting recipe:', error);
+      message.error('Xóa nguyên liệu thất bại');
     }
   };
 
@@ -414,22 +509,79 @@ const AdminMenu: React.FC = () => {
                 {selectedItem.description && (
                   <p><strong>Mô tả:</strong> {selectedItem.description}</p>
                 )}
-                <p><strong>Thời gian tạo:</strong> {new Date(selectedItem.created_at).toLocaleDateString("vi-VN")}</p>
-                <p><strong>Cập nhật lần cuối:</strong> {new Date(selectedItem.updated_at).toLocaleDateString("vi-VN")}</p>
+
+                {/* Recipe List */}
+                <div style={{ marginTop: "16px" }}>
+                  <Title level={5}>Công thức món ăn</Title>
+                  {selectedItem.recipes && selectedItem.recipes.length > 0 ? (
+                    <List
+                      size="small"
+                      bordered
+                      dataSource={selectedItem.recipes}
+                      renderItem={recipe => (
+                        <List.Item
+                          actions={[
+                            <Button 
+                              icon={<EditOutlined />}
+                              onClick={() => {
+                                setEditingRecipe(recipe);
+                                setIsRecipeModalOpen(true);
+                                form.setFieldsValue({
+                                  ingredient: recipe.ingredient_id,
+                                  quantity_required: recipe.quantity_required,
+                                });
+                              }}
+                            />,
+                            <Button 
+                              danger
+                              icon={<DeleteOutlined />}
+                              onClick={() => handleDeleteRecipe(recipe.id)}
+                            />
+                          ]}
+                        >
+                          <div>
+                            {recipe.ingredient?.name} - {recipe.quantity_required} {recipe.ingredient?.unit}
+                          </div>
+                        </List.Item>
+                      )}
+                    />
+                  ) : (
+                    <Empty description="Chưa có công thức" />
+                  )}
+                  <Button
+                    type="dashed"
+                    icon={<PlusOutlined />}
+                    onClick={() => {
+                      setEditingRecipe(null);
+                      form.resetFields();
+                      setIsRecipeModalOpen(true);
+                    }}
+                    style={{ marginTop: "8px" }}
+                  >
+                    Thêm nguyên liệu
+                  </Button>
+                </div>
+
+                <div style={{ marginTop: "24px", borderTop: "1px solid #f0f0f0", paddingTop: "16px" }}>
+                  <p><strong>Thời gian tạo:</strong> {new Date(selectedItem.created_at).toLocaleDateString("vi-VN")}</p>
+                  <p><strong>Cập nhật lần cuối:</strong> {new Date(selectedItem.updated_at).toLocaleDateString("vi-VN")}</p>
+                </div>
               </div>
               <div style={{ marginTop: "24px" }}>
-                <Button type="primary" icon={<EditOutlined />} onClick={() => {
-                  setEditingMenuItem(selectedItem);
-                  setSelectedItem(null);
-                  setIsMenuItemModalOpen(true);
-                }}>
-                  Sửa món ăn
-                </Button>
-                <Button type="primary" danger icon={<DeleteOutlined />} style={{ marginLeft: "8px" }} onClick={() => {
-                  setIsDeleteModalOpen(true);
-                }}>
-                  Xóa món ăn
-                </Button>
+                <Space>
+                  <Button type="primary" icon={<EditOutlined />} onClick={() => {
+                    setEditingMenuItem(selectedItem);
+                    setSelectedItem(null);
+                    setIsMenuItemModalOpen(true);
+                  }}>
+                    Sửa món ăn
+                  </Button>
+                  <Button type="primary" danger icon={<DeleteOutlined />} onClick={() => {
+                    setIsDeleteModalOpen(true);
+                  }}>
+                    Xóa món ăn
+                  </Button>
+                </Space>
               </div>
             </div>
           )}
@@ -533,6 +685,43 @@ const AdminMenu: React.FC = () => {
           onOk={() => selectedItem && handleDeleteMenuItem(selectedItem.id)}
         >
           <p>Bạn có chắc chắn muốn xóa món ăn này?</p>
+        </Modal>
+
+        {/* Recipe Form Modal */}
+        <Modal
+          title={editingRecipe ? "Sửa nguyên liệu" : "Thêm nguyên liệu"}
+          open={isRecipeModalOpen}
+          onCancel={() => {
+            setIsRecipeModalOpen(false);
+            setEditingRecipe(null);
+            form.resetFields();
+          }}
+          footer={null}
+        >
+          <Form
+            form={form}
+            layout="vertical"
+            onFinish={editingRecipe ? handleUpdateRecipe : handleAddRecipe}
+            initialValues={editingRecipe || {}}
+          >
+            <Form.Item name="ingredient" label="Nguyên liệu" rules={[{ required: true }]}>
+              <Select>
+                {ingredients.map(ingredient => (
+                  <Select.Option key={ingredient.id} value={ingredient.id}>
+                    {ingredient.name} ({ingredient.unit})
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+            <Form.Item name="quantity_required" label="Số lượng" rules={[{ required: true }]}>
+              <Input type="number" step="0.01" />
+            </Form.Item>
+            <Form.Item>
+              <Button type="primary" htmlType="submit">
+                {editingRecipe ? "Cập nhật" : "Thêm"}
+              </Button>
+            </Form.Item>
+          </Form>
         </Modal>
       </div>
     </AdminLayout>
