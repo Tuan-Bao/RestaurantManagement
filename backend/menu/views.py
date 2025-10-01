@@ -13,6 +13,7 @@ from .serializers import (
     RecipeSerializer, RecipeCreateUpdateSerializer
 )
 from accounts.permissions import IsAdminUser
+from .signals import check_menu_item_availability, update_all_menu_items_status
 
 # ===== CATEGORY VIEWS =====
 class CategoryListCreateView(generics.ListCreateAPIView):
@@ -467,3 +468,45 @@ class RecipeBulkUpdateView(APIView):
             'added': added,
             'removed': list(removed)
         })
+
+
+# ===== MENU ITEM AUTO-STATUS MANAGEMENT =====
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def check_menu_item_status_view(request, pk):
+    """
+    GET /api/menu/items/{id}/check-status/ - Kiểm tra trạng thái menu item dựa trên ingredients
+    """
+    result = check_menu_item_availability(pk)
+    
+    if 'error' in result:
+        return Response({
+            'success': False,
+            'message': result['error']
+        }, status=status.HTTP_404_NOT_FOUND)
+    
+    return Response({
+        'success': True,
+        'data': result
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def update_all_menu_items_status_view(request):
+    """
+    POST /api/menu/items/update-all-status/ - Cập nhật trạng thái tất cả menu items dựa trên ingredients (Admin only)
+    """
+    try:
+        updated_count = update_all_menu_items_status()
+        
+        return Response({
+            'success': True,
+            'message': f'Successfully updated {updated_count} menu items',
+            'updated_count': updated_count
+        })
+    except Exception as e:
+        return Response({
+            'success': False,
+            'message': f'Error updating menu items: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

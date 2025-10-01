@@ -13,6 +13,8 @@ urlpatterns = [
     path('items/', views.MenuItemListCreateView.as_view(), name='menuitem-list-create'),
     path('items/<int:pk>/', views.MenuItemDetailView.as_view(), name='menuitem-detail'),
     path('items/<int:pk>/status/', views.menu_item_status_view, name='menuitem-status'),
+    path('items/<int:pk>/check-status/', views.check_menu_item_status_view, name='menuitem-check-status'),
+    path('items/update-all-status/', views.update_all_menu_items_status_view, name='menuitem-update-all-status'),
     
     # Recipe endpoints
     path('items/<int:menu_id>/recipes/', views.RecipeListCreateView.as_view(), name='recipe-list-create'),

@@ -75,10 +75,11 @@ class StockOutCreateSerializer(serializers.ModelSerializer):
         choices=StockOut.REASON_CHOICES,
         help_text="Reason for stock-out"
     )
+    notes = serializers.CharField(required=False, allow_blank=True, help_text="Additional notes")
     
     class Meta:
         model = StockOut
-        fields = ['ingredient_name', 'quantity', 'reason']
+        fields = ['ingredient_name', 'quantity', 'reason', 'notes']
         
     def validate_quantity(self, value):
         if value <= 0:
@@ -97,8 +98,20 @@ class StockOutSerializer(serializers.ModelSerializer):
     """Serializer cho hiển thị lịch sử xuất kho"""
     ingredient = IngredientSerializer(read_only=True)
     user = UserSerializer(read_only=True)
+    order_item_info = serializers.SerializerMethodField()
     
     class Meta:
         model = StockOut
-        fields = ['id', 'ingredient', 'quantity', 'reason', 'user', 'created_at']
+        fields = ['id', 'ingredient', 'quantity', 'reason', 'user', 'order_item_info', 'notes', 'created_at']
         read_only_fields = ['id', 'user', 'created_at']
+    
+    def get_order_item_info(self, obj):
+        """Thông tin order item nếu có"""
+        if obj.order_item:
+            return {
+                'order_id': obj.order_item.order.id if obj.order_item.order else None,
+                'menu_item': obj.order_item.menu_item.name if obj.order_item.menu_item else None,
+                'quantity': obj.order_item.quantity,
+                'table': obj.order_item.order.table.name if obj.order_item.order and obj.order_item.order.table else None
+            }
+        return None
