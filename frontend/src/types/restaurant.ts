@@ -15,6 +15,25 @@ export interface Category {
   updated_at: string;
 }
 
+export interface Recipe {
+  id: number;
+  menu_item_id: number;
+  ingredient_id: number;
+  ingredient?: Ingredient;
+  quantity_required: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Ingredient {
+  id: number;
+  name: string;
+  unit: string;
+  quantity_in_stock: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface MenuItem {
   id: number;
   category_id: number;
@@ -24,6 +43,7 @@ export interface MenuItem {
   price: number;
   image_url?: string;
   status: "available" | "unavailable";
+  recipes?: Recipe[];
   created_at: string;
   updated_at: string;
 }
