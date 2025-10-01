@@ -51,5 +51,17 @@ export const tablesApi = {
       data: Table;
       message?: string;
     }>(`/tables/${tableId}/`);
-  }
+  },
+
+  changeTable: (data: {
+    from_table_id: number;
+    to_table_id: number;
+  }) => {
+    return api.post<{
+      success: boolean;
+      data: any;
+      message?: string;
+    }>('/tables/change/', data);
+  },
+  
 };

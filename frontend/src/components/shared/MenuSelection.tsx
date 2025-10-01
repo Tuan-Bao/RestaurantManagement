@@ -171,6 +171,43 @@ const MenuSelection: React.FC<MenuSelectionProps> = ({
     }
   };
 
+  const mergeOrderItems = (
+    existingItems: Array<{ menu_item: number; quantity: number; note: string }>,
+    newItems: Array<{ menu_item: number; quantity: number; note: string }>
+  ) => {
+    // Tạo map để merge items theo menu_item_id
+    const itemsMap = new Map<number, { menu_item: number; quantity: number; note: string }>();
+
+    // Thêm tất cả món hiện có (status = 'ordered')
+    existingItems.forEach(item => {
+      itemsMap.set(item.menu_item, {
+        menu_item: item.menu_item,
+        quantity: item.quantity,
+        note: item.note
+      });
+    });
+
+    // Merge với món mới từ cart
+    newItems.forEach(newItem => {
+      const existingItem = itemsMap.get(newItem.menu_item);
+      
+      if (existingItem) {
+        // Nếu món đã tồn tại, cộng dồn số lượng và cập nhật ghi chú
+        itemsMap.set(newItem.menu_item, {
+          menu_item: newItem.menu_item,
+          quantity: existingItem.quantity + newItem.quantity,
+          note: newItem.note || existingItem.note // Ưu tiên ghi chú mới
+        });
+      } else {
+        // Món mới hoàn toàn
+        itemsMap.set(newItem.menu_item, newItem);
+      }
+    });
+
+    // Chuyển map thành array
+    return Array.from(itemsMap.values());
+  };
+
   const handleCreateOrder = async () => {
     if (cart.length === 0) {
       alert('Vui lòng chọn ít nhất một món');
@@ -189,19 +226,21 @@ const MenuSelection: React.FC<MenuSelectionProps> = ({
       let response;
       
       if (existingOrder) {
-        const allItems = [
-          ...existingOrder.order_items.map(item => ({
+        // LẦN THỨ 2 TRỞ ĐI: Merge tất cả món 'ordered' hiện tại với món mới
+        const existingOrderedItems = existingOrder.order_items
+          ?.filter(item => item.status === 'ordered')
+          .map(item => ({
             menu_item: item.menu_item,
             quantity: item.quantity,
-            note: item.note || '',
-            status: item.status
-          })),
-          ...itemsData
-        ];
+            note: item.note || ''
+          })) || [];
+
+        // Merge món cũ và món mới
+        const mergedItems = mergeOrderItems(existingOrderedItems, itemsData);
         
-        response = await ordersApi.updateOrderItems(existingOrder.id, allItems);
+        response = await ordersApi.updateOrderItems(existingOrder.id, mergedItems);
       } else {
-        // Create new order
+        // LẦN ĐẦU: Tạo order mới
         const orderData = {
           table: tableId,
           items: itemsData

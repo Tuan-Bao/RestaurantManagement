@@ -318,17 +318,20 @@ const StaffTables: React.FC = () => {
       </div>
 
       {/* Table Order Modal */}
-      <TableOrderModal
-        table={selectedTable}
-        isOpen={showOrderModal}
-        onClose={() => {
-          setShowOrderModal(false);
-          setSelectedTable(null);
-        }}
-        onAddOrder={handleAddOrder}
-        onPayment={handlePayment}
-        onCloseTable={handleCloseTable}
-      />
+      {showOrderModal && selectedTable && (
+        <TableOrderModal
+          table={selectedTable}
+          isOpen={showOrderModal}
+          onClose={() => setShowOrderModal(false)}
+          onAddOrder={handleAddOrder}
+          onPayment={handlePayment}
+          onCloseTable={handleCloseTable}
+          onTableChanged={() => {
+            // Reload tables data khi có thay đổi bàn
+            loadTables();
+          }}
+        />
+      )}
 
       {/* Menu Selection Modal */}
       <MenuSelection
