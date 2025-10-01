@@ -2,8 +2,9 @@ import React, { useState, useEffect } from "react";
 import AdminLayout from "../../layouts/AdminLayout";
 import ConfirmDialog from "../../components/shared/ConfirmDialog";
 import Loading from "../../components/shared/Loading";
-import { userService, type CreateUserData, type UpdateUserData } from "../../services/user";
-import type { User } from "../../types/user";
+import { userService } from "../../services/user";
+import type { User, CreateUserData, UpdateUserData } from "../../types/user";
+
 
 const AccountsManagement: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
