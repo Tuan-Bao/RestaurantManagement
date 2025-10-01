@@ -85,14 +85,6 @@ const OrderItemCard: React.FC<OrderItemCardProps> = ({
               <i className={`${statusInfo.icon} me-1`}></i>
               {statusInfo.text}
             </span>
-
-            {item.estimatedTime && item.status === "preparing" && (
-              <div>
-                <small className="text-warning d-block">
-                  <i className="bi bi-clock me-1"></i>~{item.estimatedTime} phút
-                </small>
-              </div>
-            )}
           </div>
         </div>
 
