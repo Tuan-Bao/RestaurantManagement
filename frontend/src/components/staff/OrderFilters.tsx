@@ -1,227 +1,62 @@
-import React, { useState } from "react";
-import type { Order } from "../../types/order";
+import React from "react";
 
 interface OrderFiltersProps {
-  orders: Order[];
-  onFilteredOrdersChange: (orders: Order[]) => void;
+  filters: {
+    status: string;
+    search: string;
+    floor: number;
+  };
+  onFilterChange: (key: string, value: any) => void;
 }
 
 const OrderFilters: React.FC<OrderFiltersProps> = ({
-  orders,
-  onFilteredOrdersChange,
+  filters,
+  onFilterChange,
 }) => {
-  const [filters, setFilters] = useState({
-    status: "all",
-    search: "",
-    sortBy: "newest",
-    timeRange: "all",
-  });
-
-  const applyFilters = (newFilters = filters) => {
-    let filtered = [...orders];
-
-    // Filter by status
-    if (newFilters.status !== "all") {
-      filtered = filtered.filter(order => order.status === newFilters.status);
-    }
-
-    // Filter by search (order number, table name, customer name)
-    if (newFilters.search.trim()) {
-      const searchLower = newFilters.search.toLowerCase().trim();
-      filtered = filtered.filter(
-        order =>
-          order.orderNumber.toLowerCase().includes(searchLower) ||
-          order.tableName.toLowerCase().includes(searchLower) ||
-          order.customerName?.toLowerCase().includes(searchLower) ||
-          order.items.some(item =>
-            item.menuItemName.toLowerCase().includes(searchLower)
-          )
-      );
-    }
-
-    // Sort orders
-    if (newFilters.sortBy === "newest") {
-      filtered.sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
-    } else if (newFilters.sortBy === "oldest") {
-      filtered.sort(
-        (a, b) =>
-          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-      );
-    } else if (newFilters.sortBy === "amount-high") {
-      filtered.sort((a, b) => b.totalAmount - a.totalAmount);
-    } else if (newFilters.sortBy === "amount-low") {
-      filtered.sort((a, b) => a.totalAmount - b.totalAmount);
-    }
-
-    onFilteredOrdersChange(filtered);
-  };
-
-  const handleFilterChange = (key: string, value: string) => {
-    const newFilters = { ...filters, [key]: value };
-    setFilters(newFilters);
-    applyFilters(newFilters);
-  };
-
-  // Apply initial filters
-  React.useEffect(() => {
-    applyFilters();
-  }, [orders]);
-
-  const getOrderStats = () => {
-    const active = orders.filter(o => o.status === "active").length;
-    const completed = orders.filter(o => o.status === "completed").length;
-    const cancelled = orders.filter(o => o.status === "cancelled").length;
-
-    return { active, completed, cancelled, total: orders.length };
-  };
-
-  const stats = getOrderStats();
-
   return (
     <div className="card mb-4">
-      <div className="card-header">
-        <h6 className="mb-0">
-          <i className="bi bi-funnel me-2"></i>
-          Bộ lọc và thống kê đơn hàng
-        </h6>
-      </div>
       <div className="card-body">
-        {/* Quick Stats */}
-        <div className="row mb-4">
-          <div className="col-lg-3 col-md-6 mb-3">
-            <div className="d-flex align-items-center">
-              <div className="bg-primary text-white rounded p-3 me-3">
-                <i className="bi bi-receipt fs-4"></i>
-              </div>
-              <div>
-                <h5 className="mb-0">{stats.total}</h5>
-                <small className="text-muted">Tổng đơn hàng</small>
-              </div>
-            </div>
-          </div>
-
-          <div className="col-lg-3 col-md-6 mb-3">
-            <div className="d-flex align-items-center">
-              <div className="bg-success text-white rounded p-3 me-3">
-                <i className="bi bi-play-circle fs-4"></i>
-              </div>
-              <div>
-                <h5 className="mb-0">{stats.active}</h5>
-                <small className="text-muted">Đang hoạt động</small>
-              </div>
-            </div>
-          </div>
-
-          <div className="col-lg-3 col-md-6 mb-3">
-            <div className="d-flex align-items-center">
-              <div className="bg-info text-white rounded p-3 me-3">
-                <i className="bi bi-check-circle-fill fs-4"></i>
-              </div>
-              <div>
-                <h5 className="mb-0">{stats.completed}</h5>
-                <small className="text-muted">Hoàn thành</small>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Filter Controls */}
         <div className="row">
-          <div className="col-md-3 mb-3">
-            <label className="form-label">
-              <i className="bi bi-flag me-1"></i>
-              Trạng thái
-            </label>
+          <div className="col-md-4 mb-3">
+            <label className="form-label">Trạng thái</label>
             <select
               className="form-select"
               value={filters.status}
-              onChange={e => handleFilterChange("status", e.target.value)}
-              aria-label="Trạng thái"
+              onChange={e => onFilterChange("status", e.target.value)}
             >
-              <option value="all">Tất cả trạng thái</option>
-              <option value="active">Đang hoạt động</option>
-              <option value="completed">Hoàn thành</option>
+              <option value="all">Tất cả</option>
+              <option value="pending">Chờ xử lý</option>
+              <option value="preparing">Đang chuẩn bị</option>
+              <option value="ready">Sẵn sàng</option>
+              <option value="served">Đã phục vụ</option>
               <option value="cancelled">Đã hủy</option>
             </select>
           </div>
 
-
-
-          <div className="col-md-3 mb-3">
-            <label className="form-label">
-              <i className="bi bi-sort-down me-1"></i>
-              Sắp xếp theo
-            </label>
+          <div className="col-md-4 mb-3">
+            <label className="form-label">Tầng</label>
             <select
               className="form-select"
-              value={filters.sortBy}
-              onChange={e => handleFilterChange("sortBy", e.target.value)}
-              aria-label="Sắp xếp theo"
+              value={filters.floor}
+              onChange={e => onFilterChange("floor", parseInt(e.target.value))}
             >
-              <option value="newest">Mới nhất</option>
-              <option value="oldest">Cũ nhất</option>
-              <option value="amount-high">Giá trị cao</option>
-              <option value="amount-low">Giá trị thấp</option>
+              <option value={0}>Tất cả tầng</option>
+              <option value={1}>Tầng 1</option>
+              <option value={2}>Tầng 2</option>
+              <option value={3}>Tầng 3</option>
             </select>
           </div>
 
-          <div className="col-md-3 mb-3">
-            <label className="form-label">
-              <i className="bi bi-search me-1"></i>
-              Tìm kiếm
-            </label>
+          <div className="col-md-4 mb-3">
+            <label className="form-label">Tìm kiếm</label>
             <input
               type="text"
               className="form-control"
-              placeholder="Số đơn, bàn, khách hàng, món..."
+              placeholder="Tìm theo số đơn, bàn, khách hàng..."
               value={filters.search}
-              onChange={e => handleFilterChange("search", e.target.value)}
+              onChange={e => onFilterChange("search", e.target.value)}
             />
           </div>
-        </div>
-
-        {/* Quick Filter Buttons */}
-        <div className="d-flex flex-wrap gap-2">
-          <button
-            className={`btn btn-sm ${filters.status === "active"
-                ? "btn-success"
-                : "btn-outline-success"
-              }`}
-            onClick={() =>
-              handleFilterChange(
-                "status",
-                filters.status === "active" ? "all" : "active"
-              )
-            }
-          >
-            <i className="bi bi-play-circle me-1"></i>
-            Đang hoạt động ({stats.active})
-          </button>
-
-
-
-          {(filters.status !== "all" ||
-            filters.search) && (
-              <button
-                className="btn btn-sm btn-outline-secondary"
-                onClick={() => {
-                  const resetFilters = {
-                    status: "all",
-                    search: "",
-                    sortBy: "newest",
-                    timeRange: "all",
-                  };
-                  setFilters(resetFilters);
-                  applyFilters(resetFilters);
-                }}
-              >
-                <i className="bi bi-x-circle me-1"></i>
-                Xóa bộ lọc
-              </button>
-            )}
         </div>
       </div>
     </div>
