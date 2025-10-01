@@ -72,8 +72,9 @@ class StockIn(models.Model):
 
 class StockOut(models.Model):
     REASON_CHOICES = [
-        ('processing', 'Processing/Cooking'),
-        ('cancel', 'Cancelled'),
+        ('cooking', 'Cooking'),
+        ('expired', 'Expired'),
+        ('damaged', 'Damaged'),
         ('other', 'Other'),
     ]
     
@@ -81,6 +82,8 @@ class StockOut(models.Model):
     quantity = models.DecimalField(max_digits=12, decimal_places=3, null=True, blank=True)
     reason = models.CharField(max_length=20, choices=REASON_CHOICES, null=True, blank=True)
     user = models.ForeignKey('accounts.User', on_delete=models.CASCADE, null=True, blank=True, related_name='stock_outs')
+    order_item = models.ForeignKey('orders.OrderItem', on_delete=models.CASCADE, null=True, blank=True, related_name='stock_outs', help_text='Order item that triggered this stock-out (for cooking reason)')
+    notes = models.TextField(null=True, blank=True, help_text='Additional notes about the stock-out')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

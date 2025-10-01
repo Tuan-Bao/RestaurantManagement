@@ -147,6 +147,12 @@ class StockInListCreateView(generics.ListCreateAPIView):
                 previous_quantity = ingredient.stock_quantity or 0
                 ingredient.stock_quantity = (ingredient.stock_quantity or 0) + quantity
                 
+                # Tự động cập nhật status dựa trên quantity
+                if ingredient.stock_quantity > 0:
+                    ingredient.status = 'active'
+                elif ingredient.stock_quantity == 0:
+                    ingredient.status = 'inactive'
+                
                 # Cập nhật giá nếu có
                 if price and quantity > 0:
                     ingredient.price_per_unit = price / quantity
@@ -253,7 +259,8 @@ class StockOutListCreateView(generics.ListCreateAPIView):
                 ingredient_name = serializer.validated_data['ingredient_name']
                 quantity = serializer.validated_data['quantity']
                 reason = serializer.validated_data['reason']
-                print('hihi')
+                notes = serializer.validated_data.get('notes', '')
+                
                 try:
                     ingredient = Ingredient.objects.get(name=ingredient_name, deleted_at__isnull=True)
                 except Ingredient.DoesNotExist:
@@ -274,8 +281,10 @@ class StockOutListCreateView(generics.ListCreateAPIView):
                 previous_quantity = current_stock
                 ingredient.stock_quantity = current_stock - quantity
                 
-                # Kiểm tra và cập nhật status nếu hết hàng
-                if ingredient.stock_quantity == 0:
+                # Tự động cập nhật status dựa trên quantity
+                if ingredient.stock_quantity > 0:
+                    ingredient.status = 'active'
+                elif ingredient.stock_quantity == 0:
                     ingredient.status = 'inactive'
                 
                 ingredient.save()
@@ -285,6 +294,7 @@ class StockOutListCreateView(generics.ListCreateAPIView):
                     ingredient=ingredient,
                     quantity=quantity,
                     reason=reason,
+                    notes=notes,
                     user=request.user
                 )
                 
