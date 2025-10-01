@@ -4,6 +4,7 @@ import Loading from "../components/shared/Loading";
 import Login from "../pages/Login";
 import AdminDashboard from "../pages/admin/AdminDashboard";
 import AccountsManagement from "../pages/admin/AdminAccountsManagement";
+import AdminMenu from "../pages/admin/AdminMenu";
 import AdminTables from "../pages/admin/AdminTables";
 import StaffDashboard from "../pages/staff/StaffDashboard";
 import StaffTables from "../pages/staff/StaffTables";
@@ -42,7 +43,15 @@ const AppRoutes = () => {
           </ProtectedRoute>
         }
       />
-
+      <Route
+        path="/admin/menu"
+        element={
+          <ProtectedRoute requiredRole="admin">
+            <AdminMenu />
+          </ProtectedRoute>
+        }
+      />
+      
       <Route
         path="/admin/tables"
         element={
