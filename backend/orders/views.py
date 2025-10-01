@@ -516,14 +516,34 @@ class OrderItemStatusUpdateView(generics.UpdateAPIView):
                 'message': f'Item is already in "{status_value}" status'
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        order_item.status = status_value
-        order_item.save()
-        
-        return Response({
-            'success': True,
-            'message': f'Updated order item status from "{old_status}" to "{status_value}"',
-            'data': OrderItemSerializer(order_item).data
-        })
+        # Try to update status and catch signal exceptions
+        try:
+            order_item.status = status_value
+            order_item.save()
+            
+            return Response({
+                'success': True,
+                'message': f'Updated order item status from "{old_status}" to "{status_value}"',
+                'data': OrderItemSerializer(order_item).data
+            })
+            
+        except ValueError as e:
+            # Catch lỗi từ signal về thiếu nguyên liệu
+            return Response({
+                'success': False,
+                'message': 'Không thể cập nhật trạng thái món',
+                'error': str(e),
+                'error_type': 'ingredient_shortage'
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+        except Exception as e:
+            # Catch các lỗi khác
+            return Response({
+                'success': False,
+                'message': 'Có lỗi xảy ra khi cập nhật trạng thái',
+                'error': str(e),
+                'error_type': 'general_error'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class OrderItemDeleteView(generics.DestroyAPIView):
