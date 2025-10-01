@@ -1,0 +1,20 @@
+/* Ensure modal always appears above all content and is centered */
+.modal.show.d-block {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 99999 !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.modal-dialog {
+    margin: 0 !important;
+    max-width: 700px !important;
+    position: relative !important;
+    z-index: 100000 !important;
+}
