@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ordersApi } from '../../services/orders';
 import ConfirmDialog from './ConfirmDialog';
 import type { Table, Order, OrderItem } from '../../types/restaurant';
+import { tablesApi } from '../../services/tables';
 
 interface TableOrderModalProps {
   table: Table | null;
@@ -10,6 +11,7 @@ interface TableOrderModalProps {
   onAddOrder: () => void;
   onPayment: () => void;
   onCloseTable?: () => void;
+  onTableChanged?: () => void;
 }
 
 const TableOrderModal: React.FC<TableOrderModalProps> = ({
@@ -19,6 +21,7 @@ const TableOrderModal: React.FC<TableOrderModalProps> = ({
   onAddOrder,
   onPayment,
   onCloseTable,
+  onTableChanged,
 }) => {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(false);
@@ -27,7 +30,10 @@ const TableOrderModal: React.FC<TableOrderModalProps> = ({
   // Confirm dialog states
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<OrderItem | null>(null);
-
+  const [showTableChangeModal, setShowTableChangeModal] = useState(false);
+  const [availableTables, setAvailableTables] = useState<Table[]>([]);
+  const [selectedTargetTable, setSelectedTargetTable] = useState<number | null>(null);
+  
   // Load order data when modal opens
   useEffect(() => {
     if (isOpen && table) {
@@ -102,6 +108,50 @@ const TableOrderModal: React.FC<TableOrderModalProps> = ({
       } else {
         alert('Có lỗi xảy ra khi xóa món ăn');
       }
+    }
+  };
+
+  const loadAvailableTables = async () => {
+    try {
+      const response = await tablesApi.getTables({ status: 'available' });
+      if (response.data.success) {
+        // Loại bỏ bàn hiện tại khỏi danh sách
+        const tables = response.data.data.filter(t => t.id !== table?.id);
+        setAvailableTables(tables);
+      }
+    } catch (error) {
+      console.error('Error loading available tables:', error);
+    }
+  };
+
+  const handleTableChangeClick = () => {
+    loadAvailableTables();
+    setShowTableChangeModal(true);
+  };
+
+  const handleTableChange = async () => {
+    if (!table || !selectedTargetTable) return;
+
+    try {
+      const response = await tablesApi.changeTable({
+        from_table_id: table.id,
+        to_table_id: selectedTargetTable
+      });
+
+      if (response.data.success) {
+        // alert('Chuyển bàn thành công!');
+        setShowTableChangeModal(false);
+        setSelectedTargetTable(null);
+        if (onTableChanged) {
+          onTableChanged();
+        }
+        onClose(); // Đóng modal và refresh data
+      } else {
+        alert('Không thể chuyển bàn. Vui lòng thử lại.');
+      }
+    } catch (error) {
+      console.error('Error changing table:', error);
+      alert('Có lỗi xảy ra khi chuyển bàn');
     }
   };
 
@@ -226,13 +276,13 @@ const TableOrderModal: React.FC<TableOrderModalProps> = ({
                                     {/* Status change buttons */}
                                     {item.status === 'ordered' && (
                                       <>
-                                        <button
+                                        {/* <button
                                           className="btn btn-sm btn-outline-info"
                                           onClick={() => handleItemStatusChange(item.id, 'cooking')}
                                           title="Bắt đầu nấu"
                                         >
                                           <i className="bi bi-play"></i>
-                                        </button>
+                                        </button> */}
                                         <button
                                           className="btn btn-sm btn-outline-danger"
                                           onClick={() => handleDeleteItem(item)}
@@ -242,7 +292,7 @@ const TableOrderModal: React.FC<TableOrderModalProps> = ({
                                         </button>
                                       </>
                                     )}
-                                    {item.status === 'cooking' && (
+                                    {/* {item.status === 'cooking' && (
                                       <button
                                         className="btn btn-sm btn-outline-success"
                                         onClick={() => handleItemStatusChange(item.id, 'done')}
@@ -250,7 +300,7 @@ const TableOrderModal: React.FC<TableOrderModalProps> = ({
                                       >
                                         <i className="bi bi-check"></i>
                                       </button>
-                                    )}
+                                    )} */}
                                   </div>
                                 </td>
                               </tr>
@@ -303,11 +353,11 @@ const TableOrderModal: React.FC<TableOrderModalProps> = ({
                   <button
                     type="button"
                     className="btn btn-info"
-                    disabled
-                    title="Chức năng ghép bàn đang phát triển"
+                    onClick={handleTableChangeClick}
+                    title="Chuyển món sang bàn khác"
                   >
-                    <i className="bi bi-arrow-left-right me-1"></i>
-                    Ghép bàn
+                    <i className="bi bi-arrow-right me-1"></i>
+                    Chuyển bàn
                   </button>
                   
                   <button
@@ -350,6 +400,81 @@ const TableOrderModal: React.FC<TableOrderModalProps> = ({
           setItemToDelete(null);
         }}
       />
+
+      {/* Table Change Modal */}
+      {showTableChangeModal && (
+        <div className="modal show d-block" tabIndex={-1} style={{ zIndex: 1060 }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">
+                  <i className="bi bi-arrow-right me-2"></i>
+                  Chuyển bàn
+                </h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => {
+                    setShowTableChangeModal(false);
+                    setSelectedTargetTable(null);
+                  }}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <div className="alert alert-info">
+                  <small>
+                    <i className="bi bi-info-circle me-1"></i>
+                    Chuyển tất cả món từ <strong>{table?.name}</strong> sang bàn khác
+                  </small>
+                </div>
+                
+                <div className="mb-3">
+                  <label className="form-label">Chọn bàn đích:</label>
+                  <select 
+                    className="form-select"
+                    value={selectedTargetTable || ''}
+                    onChange={(e) => setSelectedTargetTable(Number(e.target.value))}
+                  >
+                    <option value="">-- Chọn bàn --</option>
+                    {availableTables.map(availableTable => (
+                      <option key={availableTable.id} value={availableTable.id}>
+                        {availableTable.name} (Tầng {availableTable.floor})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                {availableTables.length === 0 && (
+                  <div className="alert alert-warning">
+                    <small>Không có bàn trống để chuyển</small>
+                  </div>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setShowTableChangeModal(false);
+                    setSelectedTargetTable(null);
+                  }}
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleTableChange}
+                  disabled={!selectedTargetTable}
+                >
+                  <i className="bi bi-check me-1"></i>
+                  Xác nhận chuyển
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
       <div className="modal-backdrop show"></div>
     </>
@@ -357,3 +482,58 @@ const TableOrderModal: React.FC<TableOrderModalProps> = ({
 };
 
 export default TableOrderModal;
+
+
+// Thêm hiệu ứng nma lười quá 
+// const [tableChangeLoading, setTableChangeLoading] = useState(false);
+
+// const handleTableChange = async () => {
+//   if (!table || !selectedTargetTable) return;
+
+//   try {
+//     setTableChangeLoading(true);
+//     const response = await tablesApi.changeTable({
+//       from_table_id: table.id,
+//       to_table_id: selectedTargetTable
+//     });
+
+//     if (response.data.success) {
+//       alert('Chuyển bàn thành công!');
+//       setShowTableChangeModal(false);
+//       setSelectedTargetTable(null);
+      
+//       if (onTableChanged) {
+//         onTableChanged();
+//       }
+      
+//       onClose();
+//     } else {
+//       alert('Không thể chuyển bàn. Vui lòng thử lại.');
+//     }
+//   } catch (error) {
+//     console.error('Error changing table:', error);
+//     alert('Có lỗi xảy ra khi chuyển bàn');
+//   } finally {
+//     setTableChangeLoading(false);
+//   }
+// };
+
+// // Cập nhật button confirm
+// <button
+//   type="button"
+//   className="btn btn-primary"
+//   onClick={handleTableChange}
+//   disabled={!selectedTargetTable || tableChangeLoading}
+// >
+//   {tableChangeLoading ? (
+//     <>
+//       <span className="spinner-border spinner-border-sm me-1"></span>
+//       Đang chuyển...
+//     </>
+//   ) : (
+//     <>
+//       <i className="bi bi-check me-1"></i>
+//       Xác nhận chuyển
+//     </>
+//   )}
+// </button>
