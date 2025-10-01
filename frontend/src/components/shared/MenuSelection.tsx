@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { menuApi } from '../../services/menu';
 import { ordersApi } from '../../services/orders';
 import type { MenuItem, Category, Order, OrderItem } from '../../types/restaurant';
+import { useNotification } from '../../contexts/NotificationContext';
 
 interface CartItem {
   menuItem: MenuItem;
@@ -24,6 +25,7 @@ const MenuSelection: React.FC<MenuSelectionProps> = ({
   onClose,
   onOrderCreated,
 }) => {
+  const { showNotification } = useNotification();
   const [categories, setCategories] = useState<Category[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [filteredItems, setFilteredItems] = useState<MenuItem[]>([]);
@@ -210,7 +212,7 @@ const MenuSelection: React.FC<MenuSelectionProps> = ({
 
   const handleCreateOrder = async () => {
     if (cart.length === 0) {
-      alert('Vui lòng chọn ít nhất một món');
+      showNotification('Vui lòng chọn ít nhất một món', 'warning');
       return;
     }
 
@@ -226,21 +228,17 @@ const MenuSelection: React.FC<MenuSelectionProps> = ({
       let response;
       
       if (existingOrder) {
-        // LẦN THỨ 2 TRỞ ĐI: Merge tất cả món 'ordered' hiện tại với món mới
         const existingOrderedItems = existingOrder.order_items
           ?.filter(item => item.status === 'ordered')
           .map(item => ({
-            menu_item: item.menu_item,
+            menu_item: item.menu_item_id,
             quantity: item.quantity,
             note: item.note || ''
           })) || [];
 
-        // Merge món cũ và món mới
         const mergedItems = mergeOrderItems(existingOrderedItems, itemsData);
-        
         response = await ordersApi.updateOrderItems(existingOrder.id, mergedItems);
       } else {
-        // LẦN ĐẦU: Tạo order mới
         const orderData = {
           table: tableId,
           items: itemsData
@@ -252,12 +250,16 @@ const MenuSelection: React.FC<MenuSelectionProps> = ({
         setCart([]);
         onOrderCreated();
         onClose();
+        showNotification(
+          existingOrder ? 'Đã thêm món vào đơn hàng' : 'Đặt món thành công', 
+          'success'
+        );
       } else {
-        alert('Không thể xử lý đơn hàng. Vui lòng thử lại.');
+        showNotification('Không thể xử lý đơn hàng. Vui lòng thử lại.', 'error');
       }
     } catch (error) {
       console.error('Error processing order:', error);
-      alert('Có lỗi xảy ra khi xử lý đơn hàng');
+      showNotification('Có lỗi xảy ra khi xử lý đơn hàng', 'error');
     } finally {
       setLoading(false);
     }
