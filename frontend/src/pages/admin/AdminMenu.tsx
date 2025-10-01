@@ -1,18 +1,15 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { Row, Col, Card, Input, Select, Modal, Spin, Typography, message, Button } from "antd";
-import StaffLayout from "../../layouts/StaffLayout";
+import React, { useState, useEffect } from "react";
+import { Row, Col, Card, Input, Select, Modal, Spin, Typography, message } from "antd";
+import AdminLayout from "../../layouts/AdminLayout";
 import { menuApi } from "../../services/menu";
 import type { Category, MenuItem } from "../../types/restaurant";
-// import "antd/dist/antd.css";
+import "antd/dist/reset.css";
 
 const { Title } = Typography;
 const { Search } = Input;
 
-const StaffMenu: React.FC = () => {
-  // State management
+const AdminMenu: React.FC = () => {
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [filteredItems, setFilteredItems] = useState<MenuItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -20,14 +17,9 @@ const StaffMenu: React.FC = () => {
     total: 0,
     available: 0
   });
-
-  // Filter state
-  const [filters, setFilters] = useState({
-    name: "",
-    category: undefined as number | undefined,
-    status: undefined as "available" | "unavailable" | undefined
-  });
-  // ...existing code...
+  const [searchName, setSearchName] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<number | undefined>();
+  const [selectedStatus, setSelectedStatus] = useState<"available" | "unavailable" | undefined>();
 
   // Fetch menu data on component mount
   useEffect(() => {
@@ -37,7 +29,6 @@ const StaffMenu: React.FC = () => {
   // Fetch categories and menu items
   const fetchData = async () => {
     setLoading(true);
-    setError(null);
     try {
       const [categoriesRes, itemsRes] = await Promise.all([
         menuApi.getCategories(),
@@ -47,7 +38,7 @@ const StaffMenu: React.FC = () => {
       if (categoriesRes.data.success && itemsRes.data.success) {
         setCategories(categoriesRes.data.data);
         const menuItemsData = itemsRes.data.data;
-        setMenuItems(menuItemsData);
+        // Don't need to set menuItems anymore as we only use filteredItems
         setFilteredItems(menuItemsData);
         
         // Calculate stats
@@ -59,78 +50,31 @@ const StaffMenu: React.FC = () => {
           available: availableCount
         });
       } else {
-        const errorMessage = categoriesRes.data.message || itemsRes.data.message || "Lỗi khi tải dữ liệu";
-        setError(errorMessage);
-        message.error(errorMessage);
+        message.error(categoriesRes.data.message || itemsRes.data.message || "Failed to fetch data");
       }
     } catch (error) {
       console.error("Error fetching menu data:", error);
-      const errorMessage = "Không thể tải dữ liệu. Vui lòng thử lại sau.";
-      setError(errorMessage);
-      message.error(errorMessage);
+      message.error("Không thể tải dữ liệu. Vui lòng thử lại sau.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Apply filters and update filtered items
-  const applyFilters = useCallback(() => {
-    let filtered = [...menuItems];
-
-    if (filters.name) {
-      filtered = filtered.filter(item =>
-        item.name.toLowerCase().includes(filters.name.toLowerCase())
-      );
-    }
-
-    if (filters.category !== undefined) {
-      filtered = filtered.filter(item => item.category_id === filters.category);
-    }
-
-    if (filters.status !== undefined) {
-      filtered = filtered.filter(item => item.status === filters.status);
-    }
-
-    setFilteredItems(filtered);
-  }, [filters, menuItems]);
-
   useEffect(() => {
-    applyFilters();
-  }, [applyFilters]);
+    const filtered = filteredItems.filter((item: MenuItem) => {
+      const matchesName = !searchName || item.name.toLowerCase().includes(searchName.toLowerCase());
+      const matchesCategory = !selectedCategory || item.category_id === selectedCategory;
+      const matchesStatus = !selectedStatus || item.status === selectedStatus;
+      return matchesName && matchesCategory && matchesStatus;
+    });
+    setFilteredItems(filtered);
+  }, [searchName, selectedCategory, selectedStatus, filteredItems]);
 
-  const handleSearch = (value: string) => {
-    setFilters(prev => ({ ...prev, name: value }));
-  };
-
-  const handleCategoryChange = (value: number | undefined) => {
-    setFilters(prev => ({ ...prev, category: value }));
-  };
-
-  const handleStatusChange = (value: "available" | "unavailable" | undefined) => {
-    setFilters(prev => ({ ...prev, status: value }));
-  };
-
-  const handleMenuItemClick = (item: MenuItem) => {
-    setSelectedItem(item);
-  };
+  // Add any additional handlers here
 
   return (
-    <StaffLayout>
-      {error ? (
-        <div style={{ padding: "24px", maxWidth: 1200, margin: "0 auto" }}>
-          <Card>
-            <div style={{ textAlign: "center", color: "#ff4d4f", padding: "24px" }}>
-              <Typography.Title level={4} type="danger">
-                {error}
-              </Typography.Title>
-              <Button type="primary" onClick={fetchData}>
-                Thử lại
-              </Button>
-            </div>
-          </Card>
-        </div>
-      ) : (
-        <div style={{ padding: "24px", maxWidth: 1200, margin: "0 auto" }}>
+    <AdminLayout>
+      <div style={{ padding: "24px", maxWidth: 1200, margin: "0 auto" }}>
         {/* Statistics */}
         <Row gutter={[16, 16]} style={{ marginBottom: "24px" }}>
           <Col span={12}>
@@ -156,7 +100,7 @@ const StaffMenu: React.FC = () => {
           <Col span={8}>
             <Search
               placeholder="Tìm kiếm theo tên"
-              onSearch={handleSearch}
+              onSearch={setSearchName}
               style={{ width: "100%" }}
             />
           </Col>
@@ -165,7 +109,7 @@ const StaffMenu: React.FC = () => {
               style={{ width: "100%" }}
               placeholder="Chọn danh mục"
               allowClear
-              onChange={handleCategoryChange}
+              onChange={setSelectedCategory}
             >
               {categories.map(category => (
                 <Select.Option key={category.id} value={category.id}>
@@ -179,7 +123,7 @@ const StaffMenu: React.FC = () => {
               style={{ width: "100%" }}
               placeholder="Trạng thái"
               allowClear
-              onChange={handleStatusChange}
+              onChange={setSelectedStatus}
             >
               <Select.Option value="available">Có sẵn</Select.Option>
               <Select.Option value="unavailable">Hết món</Select.Option>
@@ -209,7 +153,7 @@ const StaffMenu: React.FC = () => {
                       }}
                     />
                   }
-                  onClick={() => handleMenuItemClick(item)}
+                  onClick={() => setSelectedItem(item)}
                 >
                   <Card.Meta
                     title={item.name}
@@ -274,10 +218,8 @@ const StaffMenu: React.FC = () => {
           )}
         </Modal>
       </div>
-      )}
-    </StaffLayout>
+    </AdminLayout>
   );
 };
 
-export default StaffMenu;
-
+export default AdminMenu;
