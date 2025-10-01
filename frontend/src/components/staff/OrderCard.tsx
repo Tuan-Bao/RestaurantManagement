@@ -12,6 +12,7 @@ interface OrderCardProps {
   ) => void;
   onOrderStatusChange: (orderId: number, status: Order["status"]) => void;
   onItemDelete: (orderId: number, itemId: number) => void;
+  onViewDetails?: (order: Order) => void;
 }
 
 const OrderCard: React.FC<OrderCardProps> = ({
@@ -19,6 +20,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
   onItemStatusChange,
   onOrderStatusChange,
   onItemDelete,
+  onViewDetails,
 }) => {
   const [showModal, setShowModal] = useState(false);
 
@@ -124,7 +126,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
             </small>
             <button
               className="btn btn-sm btn-outline-primary"
-              onClick={() => setShowModal(true)}
+              onClick={() => onViewDetails?.(order)}
             >
               <i className="bi bi-eye me-1"></i>
               Chi tiết

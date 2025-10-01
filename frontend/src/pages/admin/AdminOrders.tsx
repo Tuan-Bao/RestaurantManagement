@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useCallback } from "react";
 import AdminLayout from "../../layouts/AdminLayout";
 import AdminOrderDetailsModal from "../../components/admin/AdminOrderDetailsModal";
-import type { Floor, Order } from "../../types/order";
+import ordersService from "../../services/ordersService";
+import type { Order } from "../../types/order";
 
 const AdminOrders: React.FC = () => {
     const [activeFloor, setActiveFloor] = useState<number>(0); // 0 = all floors
-    const [floors, setFloors] = useState<Floor[]>([]);
+    const [orders, setOrders] = useState<Order[]>([]);
     const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [showOrderModal, setShowOrderModal] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [filters, setFilters] = useState({
@@ -16,245 +19,122 @@ const AdminOrders: React.FC = () => {
         dateRange: "today",
     });
 
-    // Mock data - Replace with actual API calls
-    useEffect(() => {
-        const mockFloors: Floor[] = [
-            {
-                id: 1,
-                name: "Tầng 1",
-                orders: [
-                    {
-                        id: 1,
-                        orderNumber: "ORD-001",
-                        tableId: 1,
-                        tableName: "Bàn 1",
-                        floorId: 1,
-                        floorName: "Tầng 1",
-                        customerName: "Nguyễn Văn A",
-                        status: "active",
-                        totalAmount: 450000,
-                        createdAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-                        updatedAt: new Date().toISOString(),
-                        notes: "Khách yêu cầu ít cay",
-                        estimatedCompletionTime: new Date(
-                            Date.now() + 15 * 60 * 1000
-                        ).toISOString(),
-                        items: [
-                            {
-                                id: 1,
-                                menuItemId: 101,
-                                menuItemName: "Phở bò đặc biệt",
-                                quantity: 2,
-                                unitPrice: 80000,
-                                totalPrice: 160000,
-                                status: "ready",
-                                estimatedTime: 5,
-                            },
-                            {
-                                id: 2,
-                                menuItemId: 102,
-                                menuItemName: "Bánh mì thịt nướng",
-                                quantity: 1,
-                                unitPrice: 35000,
-                                totalPrice: 35000,
-                                status: "preparing",
-                                specialInstructions: "Không rau thơm",
-                                estimatedTime: 10,
-                            },
-                            {
-                                id: 3,
-                                menuItemId: 103,
-                                menuItemName: "Cà phê sữa đá",
-                                quantity: 3,
-                                unitPrice: 25000,
-                                totalPrice: 75000,
-                                status: "served",
-                            },
-                            {
-                                id: 4,
-                                menuItemId: 104,
-                                menuItemName: "Chè ba màu",
-                                quantity: 2,
-                                unitPrice: 20000,
-                                totalPrice: 40000,
-                                status: "pending",
-                                specialInstructions: "Ít đường",
-                            },
-                        ],
-                    },
-                    {
-                        id: 2,
-                        orderNumber: "ORD-002",
-                        tableId: 3,
-                        tableName: "Bàn 3",
-                        floorId: 1,
-                        floorName: "Tầng 1",
-                        customerName: "Trần Thị B",
-                        status: "completed",
-                        totalAmount: 280000,
-                        createdAt: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
-                        updatedAt: new Date().toISOString(),
-                        items: [
-                            {
-                                id: 5,
-                                menuItemId: 105,
-                                menuItemName: "Bún bò Huế",
-                                quantity: 2,
-                                unitPrice: 70000,
-                                totalPrice: 140000,
-                                status: "served",
-                            },
-                            {
-                                id: 6,
-                                menuItemId: 106,
-                                menuItemName: "Nem nướng",
-                                quantity: 1,
-                                unitPrice: 45000,
-                                totalPrice: 45000,
-                                status: "served",
-                            },
-                            {
-                                id: 7,
-                                menuItemId: 107,
-                                menuItemName: "Trà đá",
-                                quantity: 2,
-                                unitPrice: 10000,
-                                totalPrice: 20000,
-                                status: "served",
-                            },
-                        ],
-                    },
-                ],
-            },
-            {
-                id: 2,
-                name: "Tầng 2",
-                orders: [
-                    {
-                        id: 3,
-                        orderNumber: "ORD-003",
-                        tableId: 9,
-                        tableName: "Bàn 9",
-                        floorId: 2,
-                        floorName: "Tầng 2",
-                        customerName: "Lê Văn C",
-                        status: "cancelled",
-                        totalAmount: 650000,
-                        createdAt: new Date(Date.now() - 20 * 60 * 1000).toISOString(),
-                        updatedAt: new Date().toISOString(),
-                        notes: "Khách hủy do chờ quá lâu",
-                        items: [
-                            {
-                                id: 8,
-                                menuItemId: 108,
-                                menuItemName: "Lẩu thái hải sản",
-                                quantity: 1,
-                                unitPrice: 350000,
-                                totalPrice: 350000,
-                                status: "pending",
-                                estimatedTime: 25,
-                            },
-                            {
-                                id: 9,
-                                menuItemId: 109,
-                                menuItemName: "Rau sống",
-                                quantity: 1,
-                                unitPrice: 30000,
-                                totalPrice: 30000,
-                                status: "pending",
-                            },
-                            {
-                                id: 10,
-                                menuItemId: 110,
-                                menuItemName: "Nước ngọt",
-                                quantity: 4,
-                                unitPrice: 15000,
-                                totalPrice: 60000,
-                                status: "pending",
-                            },
-                        ],
-                    },
-                ],
-            },
-        ];
-        setFloors(mockFloors);
-    }, []);
-
-    const getCurrentOrders = useCallback(() => {
-        if (activeFloor === 0) {
-            return floors.flatMap(floor => floor.orders);
+    // Helper function để chuyển đổi dateRange thành date
+    const getDateFromRange = (range: string): string | undefined => {
+        const now = new Date();
+        switch (range) {
+            case "today":
+                return now.toISOString().split('T')[0];
+            case "week":
+                const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                return weekAgo.toISOString().split('T')[0];
+            case "month":
+                const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                return monthAgo.toISOString().split('T')[0];
+            default:
+                return undefined;
         }
-        return floors.find(floor => floor.id === activeFloor)?.orders || [];
-    }, [floors, activeFloor]);
+    };
 
-    const applyFilters = useCallback(() => {
-        let filtered = getCurrentOrders();
+    // Lấy danh sách đơn hàng từ API
+    const fetchOrders = useCallback(async () => {
+        try {
+            setLoading(true);
+            setError(null);
+
+            const apiFilters = ordersService.transformFiltersToAPI({
+                status: filters.status,
+                search: filters.search,
+                floorId: activeFloor > 0 ? activeFloor : undefined,
+                dateFrom: getDateFromRange(filters.dateRange),
+            });
+
+            const response = await ordersService.getOrders(apiFilters);
+
+            if (response.success) {
+                const transformedOrders = response.data.map(order =>
+                    ordersService.transformOrderFromAPI(order)
+                );
+                setOrders(transformedOrders);
+            } else {
+                throw new Error('Không thể tải danh sách đơn hàng');
+            }
+        } catch (err) {
+            console.error('Error fetching orders:', err);
+            setError(err instanceof Error ? err.message : 'Có lỗi xảy ra khi tải dữ liệu');
+        } finally {
+            setLoading(false);
+        }
+    }, [filters, activeFloor]);
+
+    // Load orders khi component mount hoặc dependencies thay đổi
+    useEffect(() => {
+        fetchOrders();
+    }, [fetchOrders]);
+
+    // Apply filters whenever orders change
+    useEffect(() => {
+        applyFilters();
+    }, [orders]);
+
+    const applyFilters = () => {
+        let filtered = orders;
 
         // Filter by status
         if (filters.status !== "all") {
-            filtered = filtered.filter(order => order.status === filters.status);
+            filtered = filtered.filter((order: Order) => order.status === filters.status);
         }
 
         // Filter by search
         if (filters.search.trim()) {
             const searchLower = filters.search.toLowerCase().trim();
             filtered = filtered.filter(
-                order =>
+                (order: Order) =>
                     order.orderNumber.toLowerCase().includes(searchLower) ||
                     order.tableName.toLowerCase().includes(searchLower) ||
                     order.customerName?.toLowerCase().includes(searchLower) ||
-                    order.items.some(item =>
+                    order.items.some((item: any) =>
                         item.menuItemName.toLowerCase().includes(searchLower)
                     )
             );
         }
 
-        // Filter by date range
-        const now = new Date();
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-        if (filters.dateRange === "today") {
-            filtered = filtered.filter(order => new Date(order.createdAt) >= today);
-        } else if (filters.dateRange === "week") {
-            const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-            filtered = filtered.filter(order => new Date(order.createdAt) >= weekAgo);
-        } else if (filters.dateRange === "month") {
-            const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
-            filtered = filtered.filter(order => new Date(order.createdAt) >= monthAgo);
-        }
-
-        // Sort orders
-        if (filters.sortBy === "newest") {
-            filtered.sort(
-                (a, b) =>
-                    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-            );
-        } else if (filters.sortBy === "oldest") {
-            filtered.sort(
-                (a, b) =>
-                    new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-            );
-        } else if (filters.sortBy === "amount-high") {
-            filtered.sort((a, b) => b.totalAmount - a.totalAmount);
-        } else if (filters.sortBy === "amount-low") {
-            filtered.sort((a, b) => a.totalAmount - b.totalAmount);
+        // Apply sorting
+        switch (filters.sortBy) {
+            case "newest":
+                filtered.sort(
+                    (a: Order, b: Order) =>
+                        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                );
+                break;
+            case "oldest":
+                filtered.sort(
+                    (a: Order, b: Order) =>
+                        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+                );
+                break;
+            case "amount-high":
+                filtered.sort((a: Order, b: Order) => b.totalAmount - a.totalAmount);
+                break;
+            case "amount-low":
+                filtered.sort((a: Order, b: Order) => a.totalAmount - b.totalAmount);
+                break;
         }
 
         setFilteredOrders(filtered);
-    }, [getCurrentOrders, filters]);
-
-    useEffect(() => {
-        applyFilters();
-    }, [applyFilters]);
+    };
 
     const handleFilterChange = (key: string, value: string) => {
-        setFilters(prev => ({ ...prev, [key]: value }));
+        setFilters(prev => ({
+            ...prev,
+            [key]: value
+        }));
     };
 
     const getOrderStats = () => {
-        const active = filteredOrders.filter(o => o.status === "active").length;
-        const completed = filteredOrders.filter(o => o.status === "completed").length;
-        const cancelled = filteredOrders.filter(o => o.status === "cancelled").length;
+        const active = filteredOrders.filter(order => order.status === "active").length;
+        const completed = filteredOrders.filter(order => order.status === "completed").length;
+        const cancelled = filteredOrders.filter(order => order.status === "cancelled").length;
 
         return { active, completed, cancelled, total: filteredOrders.length };
     };
@@ -276,9 +156,6 @@ const AdminOrders: React.FC = () => {
         return statusConfig[status];
     };
 
-    // Calculate stats from filtered orders
-    const stats = getOrderStats();
-
     const handleViewOrder = (order: Order) => {
         setSelectedOrder(order);
         setShowOrderModal(true);
@@ -288,6 +165,40 @@ const AdminOrders: React.FC = () => {
         setShowOrderModal(false);
         setSelectedOrder(null);
     };
+
+    // Calculate stats from filtered orders
+    const stats = getOrderStats();
+
+    // Loading state
+    if (loading) {
+        return (
+            <AdminLayout>
+                <div className="d-flex justify-content-center align-items-center" style={{ height: "50vh" }}>
+                    <div className="spinner-border text-primary" role="status">
+                        <span className="visually-hidden">Đang tải...</span>
+                    </div>
+                </div>
+            </AdminLayout>
+        );
+    }
+
+    // Error state
+    if (error) {
+        return (
+            <AdminLayout>
+                <div className="alert alert-danger" role="alert">
+                    <i className="bi bi-exclamation-triangle me-2"></i>
+                    {error}
+                    <button
+                        className="btn btn-outline-danger ms-3"
+                        onClick={fetchOrders}
+                    >
+                        Thử lại
+                    </button>
+                </div>
+            </AdminLayout>
+        );
+    }
 
     return (
         <AdminLayout>
@@ -303,6 +214,10 @@ const AdminOrders: React.FC = () => {
                 </div>
 
                 <div className="d-flex gap-2">
+                    <button className="btn btn-primary" onClick={fetchOrders} disabled={loading}>
+                        <i className="bi bi-arrow-clockwise me-1"></i>
+                        Làm mới
+                    </button>
                     <button className="btn btn-success">
                         <i className="bi bi-plus me-1"></i>
                         Tạo đơn mới
@@ -316,12 +231,12 @@ const AdminOrders: React.FC = () => {
                     <div className="card border-0 shadow-sm">
                         <div className="card-body">
                             <div className="d-flex align-items-center">
-                                <div className="bg-primary text-white rounded p-3 me-3">
-                                    <i className="bi bi-receipt fs-4"></i>
+                                <div className="bg-success bg-opacity-10 rounded p-3 me-3">
+                                    <i className="bi bi-play-circle text-success fs-4"></i>
                                 </div>
                                 <div>
-                                    <h5 className="mb-0">{stats.total}</h5>
-                                    <small className="text-muted">Tổng đơn hàng</small>
+                                    <p className="text-muted mb-1 small">Đang hoạt động</p>
+                                    <h4 className="mb-0 text-success">{stats.active}</h4>
                                 </div>
                             </div>
                         </div>
@@ -332,12 +247,12 @@ const AdminOrders: React.FC = () => {
                     <div className="card border-0 shadow-sm">
                         <div className="card-body">
                             <div className="d-flex align-items-center">
-                                <div className="bg-success text-white rounded p-3 me-3">
-                                    <i className="bi bi-play-circle fs-4"></i>
+                                <div className="bg-primary bg-opacity-10 rounded p-3 me-3">
+                                    <i className="bi bi-check-circle-fill text-primary fs-4"></i>
                                 </div>
                                 <div>
-                                    <h5 className="mb-0">{stats.active}</h5>
-                                    <small className="text-muted">Đang hoạt động</small>
+                                    <p className="text-muted mb-1 small">Hoàn thành</p>
+                                    <h4 className="mb-0 text-primary">{stats.completed}</h4>
                                 </div>
                             </div>
                         </div>
@@ -348,12 +263,28 @@ const AdminOrders: React.FC = () => {
                     <div className="card border-0 shadow-sm">
                         <div className="card-body">
                             <div className="d-flex align-items-center">
-                                <div className="bg-info text-white rounded p-3 me-3">
-                                    <i className="bi bi-check-circle-fill fs-4"></i>
+                                <div className="bg-danger bg-opacity-10 rounded p-3 me-3">
+                                    <i className="bi bi-x-circle text-danger fs-4"></i>
                                 </div>
                                 <div>
-                                    <h5 className="mb-0">{stats.completed}</h5>
-                                    <small className="text-muted">Hoàn thành</small>
+                                    <p className="text-muted mb-1 small">Đã hủy</p>
+                                    <h4 className="mb-0 text-danger">{stats.cancelled}</h4>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="col-lg-3 col-md-6 mb-3">
+                    <div className="card border-0 shadow-sm">
+                        <div className="card-body">
+                            <div className="d-flex align-items-center">
+                                <div className="bg-info bg-opacity-10 rounded p-3 me-3">
+                                    <i className="bi bi-receipt text-info fs-4"></i>
+                                </div>
+                                <div>
+                                    <p className="text-muted mb-1 small">Tổng đơn</p>
+                                    <h4 className="mb-0 text-info">{stats.total}</h4>
                                 </div>
                             </div>
                         </div>
@@ -363,30 +294,8 @@ const AdminOrders: React.FC = () => {
 
             {/* Filters */}
             <div className="card mb-4">
-                <div className="card-header">
-                    <h6 className="mb-0">
-                        <i className="bi bi-funnel me-2"></i>
-                        Bộ lọc và tìm kiếm
-                    </h6>
-                </div>
                 <div className="card-body">
                     <div className="row">
-                        <div className="col-md-3 mb-3">
-                            <label className="form-label">Tầng</label>
-                            <select
-                                className="form-select"
-                                value={activeFloor}
-                                onChange={e => setActiveFloor(Number(e.target.value))}
-                            >
-                                <option value={0}>Tất cả các tầng</option>
-                                {floors.map(floor => (
-                                    <option key={floor.id} value={floor.id}>
-                                        {floor.name}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
                         <div className="col-md-3 mb-3">
                             <label className="form-label">Trạng thái</label>
                             <select
@@ -394,7 +303,7 @@ const AdminOrders: React.FC = () => {
                                 value={filters.status}
                                 onChange={e => handleFilterChange("status", e.target.value)}
                             >
-                                <option value="all">Tất cả trạng thái</option>
+                                <option value="all">Tất cả</option>
                                 <option value="active">Đang hoạt động</option>
                                 <option value="completed">Hoàn thành</option>
                                 <option value="cancelled">Đã hủy</option>
@@ -402,7 +311,7 @@ const AdminOrders: React.FC = () => {
                         </div>
 
                         <div className="col-md-3 mb-3">
-                            <label className="form-label">Khoảng thời gian</label>
+                            <label className="form-label">Thời gian</label>
                             <select
                                 className="form-select"
                                 value={filters.dateRange}
@@ -411,7 +320,7 @@ const AdminOrders: React.FC = () => {
                                 <option value="today">Hôm nay</option>
                                 <option value="week">7 ngày qua</option>
                                 <option value="month">30 ngày qua</option>
-                                <option value="all">Tất cả thời gian</option>
+                                <option value="all">Tất cả</option>
                             </select>
                         </div>
 
@@ -453,11 +362,6 @@ const AdminOrders: React.FC = () => {
                             <i className="bi bi-list me-2"></i>
                             Danh sách đơn hàng ({filteredOrders.length})
                         </h6>
-                        <small className="text-muted">
-                            {activeFloor === 0
-                                ? "Tất cả các tầng"
-                                : floors.find(f => f.id === activeFloor)?.name}
-                        </small>
                     </div>
                 </div>
                 <div className="card-body p-0">
@@ -466,46 +370,47 @@ const AdminOrders: React.FC = () => {
                             <table className="table table-hover mb-0">
                                 <thead className="table-light">
                                     <tr>
-                                        <th>Số đơn</th>
+                                        <th>Đơn hàng</th>
                                         <th>Bàn</th>
+                                        <th>Khách hàng</th>
                                         <th>Trạng thái</th>
-                                        <th>Tổng tiền</th>
+                                        <th className="text-end">Tổng tiền</th>
                                         <th>Thời gian</th>
-                                        <th>Hành động</th>
+                                        <th className="text-center">Thao tác</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {filteredOrders.map(order => {
                                         const statusInfo = getOrderStatusBadge(order.status);
-                                        const timeInfo = new Date(order.createdAt).toLocaleString("vi-VN");
-
                                         return (
                                             <tr key={order.id}>
                                                 <td>
-                                                    <strong>{order.orderNumber}</strong>
+                                                    <div className="fw-bold">{order.orderNumber}</div>
+                                                    <small className="text-muted">
+                                                        {order.items.length} món
+                                                    </small>
                                                 </td>
                                                 <td>
-                                                    <div>
-                                                        <div className="fw-bold">{order.tableName}</div>
-                                                        <small className="text-muted">{order.floorName}</small>
-                                                    </div>
+                                                    <div>{order.tableName}</div>
+                                                    <small className="text-muted">{order.floorName}</small>
                                                 </td>
+                                                <td>{order.customerName || "Khách vãng lai"}</td>
                                                 <td>
                                                     <span className={`badge bg-${statusInfo.color}`}>
                                                         <i className={`${statusInfo.icon} me-1`}></i>
                                                         {statusInfo.text}
                                                     </span>
                                                 </td>
-                                                <td>
-                                                    <strong className="text-primary">
-                                                        {order.totalAmount.toLocaleString("vi-VN")}đ
-                                                    </strong>
+                                                <td className="text-end fw-bold">
+                                                    {order.totalAmount.toLocaleString("vi-VN")}đ
                                                 </td>
                                                 <td>
-                                                    <small>{timeInfo}</small>
+                                                    <div>
+                                                        {new Date(order.createdAt).toLocaleString("vi-VN")}
+                                                    </div>
                                                 </td>
                                                 <td>
-                                                    <div className="d-flex gap-1">
+                                                    <div className="d-flex gap-1 justify-content-center">
                                                         <button
                                                             className="btn btn-sm btn-outline-primary"
                                                             title="Xem chi tiết"
