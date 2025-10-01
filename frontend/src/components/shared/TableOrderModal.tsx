@@ -3,6 +3,7 @@ import { ordersApi } from '../../services/orders';
 import ConfirmDialog from './ConfirmDialog';
 import type { Table, Order, OrderItem } from '../../types/restaurant';
 import { tablesApi } from '../../services/tables';
+import { useNotification } from '../../contexts/NotificationContext';
 
 interface TableOrderModalProps {
   table: Table | null;
@@ -23,6 +24,7 @@ const TableOrderModal: React.FC<TableOrderModalProps> = ({
   onCloseTable,
   onTableChanged,
 }) => {
+  const { showNotification } = useNotification();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,14 +68,14 @@ const TableOrderModal: React.FC<TableOrderModalProps> = ({
     try {
       const response = await ordersApi.updateOrderItemStatus(itemId, newStatus);
       if (response.data.success) {
-        // Reload order data
         await loadOrderData();
+        showNotification('Cập nhật trạng thái thành công', 'success');
       } else {
-        alert('Không thể cập nhật trạng thái món ăn');
+        showNotification('Không thể cập nhật trạng thái món ăn', 'error');
       }
     } catch (error) {
       console.error('Error updating item status:', error);
-      alert('Có lỗi xảy ra khi cập nhật trạng thái');
+      showNotification('Có lỗi xảy ra khi cập nhật trạng thái', 'error');
     }
   };
 
@@ -88,25 +90,24 @@ const TableOrderModal: React.FC<TableOrderModalProps> = ({
     try {
       const response = await ordersApi.deleteOrderItem(itemToDelete.id);
       
-      // Kiểm tra response status và data để xác định thành công
       if (response.status === 204 || (response.data && response.data.success)) {
-        // Reload order data
         await loadOrderData();
         setShowDeleteConfirm(false);
         setItemToDelete(null);
+        showNotification('Xóa món thành công', 'success');
       } else {
-        alert('Không thể xóa món ăn');
+        showNotification('Không thể xóa món ăn', 'error');
       }
     } catch (error: any) {
       console.error('Error deleting item:', error);
       
-      // Kiểm tra nếu là 204 No Content thì coi như thành công
       if (error.response?.status === 204) {
         await loadOrderData();
         setShowDeleteConfirm(false);
         setItemToDelete(null);
+        showNotification('Xóa món thành công', 'success');
       } else {
-        alert('Có lỗi xảy ra khi xóa món ăn');
+        showNotification('Có lỗi xảy ra khi xóa món ăn', 'error');
       }
     }
   };
@@ -139,19 +140,19 @@ const TableOrderModal: React.FC<TableOrderModalProps> = ({
       });
 
       if (response.data.success) {
-        // alert('Chuyển bàn thành công!');
         setShowTableChangeModal(false);
         setSelectedTargetTable(null);
         if (onTableChanged) {
           onTableChanged();
         }
-        onClose(); // Đóng modal và refresh data
+        showNotification('Chuyển bàn thành công!', 'success');
+        onClose();
       } else {
-        alert('Không thể chuyển bàn. Vui lòng thử lại.');
+        showNotification('Không thể chuyển bàn. Vui lòng thử lại.', 'error');
       }
     } catch (error) {
       console.error('Error changing table:', error);
-      alert('Có lỗi xảy ra khi chuyển bàn');
+      showNotification('Có lỗi xảy ra khi chuyển bàn', 'error');
     }
   };
 

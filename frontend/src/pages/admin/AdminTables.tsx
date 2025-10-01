@@ -1,0 +1,847 @@
+import React, { useState, useEffect } from 'react';
+import AdminLayout from '../../layouts/AdminLayout';
+import TableCard from '../../components/shared/TableCard';
+import FloorTabs from '../../components/shared/FloorTabs';
+import TableStats from '../../components/shared/TableStats';
+import TableOrderModal from '../../components/shared/TableOrderModal';
+import MenuSelection from '../../components/shared/MenuSelection';
+import PaymentModal from '../../components/shared/PaymentModal';
+import ConfirmDialog from '../../components/shared/ConfirmDialog';
+import { tablesApi } from '../../services/tables';
+import { ordersApi } from '../../services/orders';
+import type { Table, Order } from '../../types/restaurant';
+// @ts-ignore
+import { useNotification } from '../../contexts/NotificationContext';
+
+interface Floor {
+  id: number;
+  name: string;
+  tables: Table[];
+}
+
+const AdminTables: React.FC = () => {
+  const { showNotification } = useNotification();
+  const [activeFloor, setActiveFloor] = useState<number | null>(null);
+  const [selectedTable, setSelectedTable] = useState<Table | null>(null);
+  const [floors, setFloors] = useState<Floor[]>([]);
+  const [tables, setTables] = useState<Table[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Modal states
+  const [showOrderModal, setShowOrderModal] = useState(false);
+  const [showMenuSelection, setShowMenuSelection] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
+  
+  const [confirmAction, setConfirmAction] = useState<{
+    title: string;
+    message: string;
+    action: () => void;
+  } | null>(null);
+
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [tableToEdit, setTableToEdit] = useState<Table | null>(null);
+  const [tableToDelete, setTableToDelete] = useState<Table | null>(null);
+
+  const [tableForm, setTableForm] = useState({
+    name: '',
+    floor: 1,
+    status: 'available' as 'available' | 'unavailable'
+  });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
+  // Load tables data
+  useEffect(() => {
+    loadTables();
+  }, []);
+
+  const loadTables = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await tablesApi.getTables();
+      if (response.data.success) {
+        setTables(response.data.data);
+        groupTablesByFloor(response.data.data);
+      } else {
+        setError('Không thể tải danh sách bàn');
+      }
+    } catch (err) {
+      console.error('Error loading tables:', err);
+      setError('Có lỗi xảy ra khi tải danh sách bàn');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const groupTablesByFloor = (tablesList: Table[]) => {
+    // Group tables by floor
+    const floorGroups = tablesList.reduce((acc, table) => {
+      const floorKey = table.floor || 1;
+      if (!acc[floorKey]) {
+        acc[floorKey] = [];
+      }
+      acc[floorKey].push(table);
+      return acc;
+    }, {} as Record<number, Table[]>);
+
+    // Convert to Floor array
+    const floorsArray: Floor[] = Object.entries(floorGroups)
+      .map(([floorId, floorTables]) => ({
+        id: Number(floorId),
+        name: `Tầng ${floorId}`,
+        tables: floorTables.sort((a, b) => a.name.localeCompare(b.name))
+      }))
+      .sort((a, b) => a.id - b.id);
+
+    setFloors(floorsArray);
+  };
+
+  const getCurrentTables = (): Table[] => {
+    if (activeFloor === null) {
+      return tables;
+    }
+    const floor = floors.find(f => f.id === activeFloor);
+    return floor?.tables || [];
+  };
+
+  const getOverallStats = () => {
+    const available = tables.filter(t => t.status === 'available').length;
+    const occupied = tables.filter(t => t.status === 'unavailable').length;
+    
+    return {
+      total: tables.length,
+      available,
+      occupied,
+    };
+  };
+
+  const handleTableSelect = (table: Table) => {
+    setSelectedTable(table);
+    
+    if (table.status === 'available') {
+      // Show confirm dialog for opening table
+      setConfirmAction({
+        title: 'Mở bàn',
+        message: `Bạn có muốn mở ${table.name} không?`,
+        action: () => handleOpenTable(table)
+      });
+      setShowConfirmDialog(true);
+    } else {
+      // Show order details modal
+      setShowOrderModal(true);
+    }
+  };
+
+  const handleOpenTable = async (table: Table) => {
+    try {
+      const response = await tablesApi.updateTableStatus(table.id, 'unavailable');
+      if (response.data.success) {
+        await loadTables();
+        setShowConfirmDialog(false);
+        showNotification(`Đã mở ${table.name}`, 'success');
+      } else {
+        showNotification('Không thể mở bàn. Vui lòng thử lại.', 'error');
+      }
+    } catch (error) {
+      console.error('Error opening table:', error);
+      showNotification('Có lỗi xảy ra khi mở bàn', 'error');
+    }
+  };
+
+  const handleAddOrder = () => {
+    setShowOrderModal(false);
+    if (selectedTable) {
+      setShowMenuSelection(true);
+    }
+  };
+
+  const handlePayment = async () => {
+    if (!selectedTable) return;
+
+    try {
+      const response = await ordersApi.getOrderByTable(selectedTable.id);
+      if (response.data.success && response.data.data) {
+        const order = response.data.data;
+        const totalAmount = order.order_items?.reduce((sum, item) => 
+          sum + (item.quantity * item.price_each), 0) || 0;
+        
+        setCurrentOrder({
+          ...order,
+          total_amount: totalAmount,
+          tableName: selectedTable.name
+        });
+        setShowOrderModal(false);
+        setShowPaymentModal(true);
+      } else {
+        showNotification('Không tìm thấy đơn hàng cho bàn này', 'error');
+      }
+    } catch (error) {
+      console.error('Error loading order for payment:', error);
+      showNotification('Có lỗi xảy ra khi tải thông tin đơn hàng', 'error');
+    }
+  };
+
+  const handleCloseTable = () => {
+    if (!selectedTable) return;
+
+    setConfirmAction({
+      title: 'Đóng bàn',
+      message: `Bạn có muốn đóng ${selectedTable.name} không?`,
+      action: () => handleCloseTableConfirm()
+    });
+    setShowOrderModal(false);
+    setShowConfirmDialog(true);
+  };
+
+  const handleCloseTableConfirm = async () => {
+    if (!selectedTable) return;
+
+    try {
+      const response = await tablesApi.updateTableStatus(selectedTable.id, 'available');
+      if (response.data.success) {
+        await loadTables();
+        setShowConfirmDialog(false);
+        showNotification(`Đã đóng ${selectedTable.name}`, 'success');
+      } else {
+        showNotification('Không thể đóng bàn. Vui lòng thử lại.', 'error');
+      }
+    } catch (error) {
+      console.error('Error closing table:', error);
+      showNotification('Có lỗi xảy ra khi đóng bàn', 'error');
+    }
+  };
+
+  const handleOrderCreated = () => {
+    // Reload tables and close menu selection
+    loadTables();
+    setShowMenuSelection(false);
+  };
+
+  const handlePaymentSuccess = () => {
+    // Reload tables and close modals
+    loadTables();
+    setShowPaymentModal(false);
+    setCurrentOrder(null);
+  };
+
+  const handleRefresh = () => {
+    loadTables();
+  };
+
+  const resetForm = () => {
+    setTableForm({
+      name: '',
+      floor: 1,
+      status: 'available'
+    });
+    setFormErrors({});
+  };
+
+  const handleCreateTable = () => {
+    resetForm();
+    setShowCreateModal(true);
+  };
+
+  const handleEditTable = (table: Table) => {
+    setTableToEdit(table);
+    setTableForm({
+      name: table.name,
+      floor: table.floor || 1,
+      status: table.status
+    });
+    setFormErrors({});
+    setShowEditModal(true);
+  };
+
+  const handleDeleteTable = (table: Table) => {
+    setTableToDelete(table);
+    setShowDeleteConfirm(true);
+  };
+
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+    
+    if (!tableForm.name.trim()) {
+      errors.name = 'Tên bàn không được để trống';
+    }
+    
+    if (tableForm.floor < 1) {
+      errors.floor = 'Tầng phải là số dương';
+    }
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSubmitCreate = async () => {
+    if (!validateForm()) return;
+    
+    try {
+      setSubmitting(true);
+      const response = await tablesApi.createTable({
+        name: tableForm.name.trim(),
+        floor: tableForm.floor,
+        status: tableForm.status
+      });
+      
+      if (response.data.success) {
+        await loadTables();
+        setShowCreateModal(false);
+        resetForm();
+        showNotification('Tạo bàn thành công!', 'success');
+      } else {
+        showNotification('Không thể tạo bàn. Vui lòng thử lại.', 'error');
+      }
+    } catch (error: any) {
+      console.error('Error creating table:', error);
+      if (error.response?.data?.errors) {
+        setFormErrors(error.response.data.errors);
+      } else {
+        showNotification('Có lỗi xảy ra khi tạo bàn', 'error');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSubmitEdit = async () => {
+    if (!validateForm() || !tableToEdit) return;
+    
+    try {
+      setSubmitting(true);
+      const response = await tablesApi.updateTable(tableToEdit.id, {
+        name: tableForm.name.trim(),
+        floor: tableForm.floor,
+        status: tableForm.status
+      });
+      
+      if (response.data.success) {
+        await loadTables();
+        setShowEditModal(false);
+        setTableToEdit(null);
+        resetForm();
+        showNotification('Cập nhật bàn thành công!', 'success');
+      } else {
+        showNotification('Không thể cập nhật bàn. Vui lòng thử lại.', 'error');
+      }
+    } catch (error: any) {
+      console.error('Error updating table:', error);
+      if (error.response?.data?.errors) {
+        setFormErrors(error.response.data.errors);
+      } else {
+        showNotification('Có lỗi xảy ra khi cập nhật bàn', 'error');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!tableToDelete) return;
+    
+    try {
+      const response = await tablesApi.deleteTable(tableToDelete.id);
+      
+      // Sửa logic kiểm tra thành công
+      if (response.status === 204 || (response.data && response.data.success)) {
+        await loadTables();
+        setShowDeleteConfirm(false);
+        setTableToDelete(null);
+        showNotification('Xóa bàn thành công!', 'success');
+      } else {
+        showNotification('Không thể xóa bàn. Vui lòng thử lại.', 'error');
+      }
+    } catch (error: any) {
+      console.error('Error deleting table:', error);
+      
+      // Kiểm tra nếu là 204 No Content thì coi như thành công
+      if (error.response?.status === 204) {
+        await loadTables();
+        setShowDeleteConfirm(false);
+        setTableToDelete(null);
+        showNotification('Xóa bàn thành công!', 'success');
+      } else {
+        showNotification('Có lỗi xảy ra khi xóa bàn', 'error');
+      }
+    }
+  };
+
+  if (loading) {
+    return (
+      <AdminLayout>
+        <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '400px' }}>
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Đang tải...</span>
+          </div>
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  const stats = getOverallStats();
+  const currentTables = getCurrentTables();
+
+  return (
+    <AdminLayout>
+      <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
+        <div>
+          <h2 className="mb-1">
+            <i className="bi bi-grid-3x3 me-2"></i>
+            Quản lý bàn
+          </h2>
+          <p className="text-muted mb-0">
+            Theo dõi và quản lý trạng thái các bàn trong nhà hàng
+          </p>
+        </div>
+
+        <div className="d-flex gap-2">
+          <button 
+            className="btn btn-success"
+            onClick={handleCreateTable}
+          >
+            <i className="bi bi-plus me-1"></i>
+            Tạo bàn mới
+          </button>
+          <button 
+            className="btn btn-outline-primary"
+            onClick={handleRefresh}
+            disabled={loading}
+          >
+            <i className="bi bi-arrow-clockwise me-1"></i>
+            Làm mới
+          </button>
+        </div>
+      </div>
+        
+      {/* Error Alert */}
+      {error && (
+        <div className="alert alert-danger alert-dismissible">
+          <i className="bi bi-exclamation-triangle me-2"></i>
+          {error}
+          <button
+            type="button"
+            className="btn-close"
+            onClick={() => setError(null)}
+          ></button>
+        </div>
+      )}
+
+      {/* Statistics */}
+      <TableStats
+        totalTables={stats.total}
+        availableTables={stats.available}
+        occupiedTables={stats.occupied}
+      />
+
+      {/* Floor Navigation */}
+      <FloorTabs
+        floors={floors}
+        activeFloor={activeFloor}
+        onFloorChange={setActiveFloor}
+      />
+
+      {/* Tables Grid */}
+      <div className="row">
+        {currentTables.length > 0 ? (
+          currentTables.map(table => (
+            <div key={table.id} className="col-6 col-md-4 col-lg-3 mb-3">
+              <div className="position-relative">
+                <TableCard 
+                  table={table} 
+                  onSelect={handleTableSelect} 
+                />
+                {/* Admin Actions Menu */}
+                <div className="position-absolute top-0 end-0 p-2">
+                  <div className="dropdown">
+                    <button
+                      className="btn btn-sm btn-outline-secondary"
+                      type="button"
+                      data-bs-toggle="dropdown"
+                      aria-expanded="false"
+                    >
+                      <i className="bi bi-three-dots-vertical"></i>
+                    </button>
+                    <ul className="dropdown-menu">
+                      <li>
+                        <button
+                          className="dropdown-item"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditTable(table);
+                          }}
+                        >
+                          <i className="bi bi-pencil me-2"></i>
+                          Chỉnh sửa
+                        </button>
+                      </li>
+                      <li>
+                        <button
+                          className="dropdown-item text-danger"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteTable(table);
+                          }}
+                          disabled={table.status === 'unavailable'}
+                        >
+                          <i className="bi bi-trash me-2"></i>
+                          Xóa bàn
+                        </button>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="col-12">
+            <div className="text-center py-5">
+              <i className="bi bi-grid-3x3 fs-1 text-muted mb-3"></i>
+              <h5 className="text-muted">
+                {activeFloor === null 
+                  ? 'Không có bàn nào trong hệ thống'
+                  : `Không có bàn nào trong ${floors.find(f => f.id === activeFloor)?.name}`
+                }
+              </h5>
+              <p className="text-muted">
+                {activeFloor === null 
+                  ? 'Vui lòng liên hệ quản trị viên để thêm bàn mới.'
+                  : 'Vui lòng chọn tầng khác hoặc liên hệ quản trị viên.'
+                }
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Table Order Modal */}
+      {showOrderModal && selectedTable && (
+        <TableOrderModal
+          table={selectedTable}
+          isOpen={showOrderModal}
+          onClose={() => setShowOrderModal(false)}
+          onAddOrder={handleAddOrder}
+          onPayment={handlePayment}
+          onCloseTable={handleCloseTable}
+          onTableChanged={() => {
+            // Reload tables data khi có thay đổi bàn
+            loadTables();
+          }}
+        />
+      )}
+
+      {/* Menu Selection Modal */}
+      <MenuSelection
+        isOpen={showMenuSelection}
+        tableId={selectedTable?.id || 0}
+        tableName={selectedTable?.name || ''}
+        onClose={() => setShowMenuSelection(false)}
+        onOrderCreated={handleOrderCreated}
+      />
+
+      {/* Payment Modal */}
+      <PaymentModal
+        isOpen={showPaymentModal}
+        order={currentOrder}
+        onClose={() => {
+          setShowPaymentModal(false);
+          setCurrentOrder(null);
+        }}
+        onPaymentSuccess={handlePaymentSuccess}
+      />
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={showConfirmDialog}
+        title={confirmAction?.title || ''}
+        message={confirmAction?.message || ''}
+        confirmText="Xác nhận"
+        cancelText="Hủy"
+        onConfirm={() => {
+          confirmAction?.action();
+        }}
+        onCancel={() => {
+          setShowConfirmDialog(false);
+          setConfirmAction(null);
+          setSelectedTable(null);
+        }}
+      />
+
+      {/* Create Table Modal */}
+      {showCreateModal && (
+        <div className="modal show d-block" tabIndex={-1}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">
+                  <i className="bi bi-plus me-2"></i>
+                  Tạo bàn mới
+                </h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => {
+                    setShowCreateModal(false);
+                    resetForm();
+                  }}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <form>
+                  <div className="mb-3">
+                    <label className="form-label">Tên bàn *</label>
+                    <input
+                      type="text"
+                      className={`form-control ${formErrors.name ? 'is-invalid' : ''}`}
+                      value={tableForm.name}
+                      onChange={(e) => setTableForm(prev => ({ ...prev, name: e.target.value }))}
+                      placeholder="Ví dụ: Bàn 1, Bàn VIP A..."
+                    />
+                    {formErrors.name && (
+                      <div className="invalid-feedback">{formErrors.name}</div>
+                    )}
+                  </div>
+                  
+                  <div className="mb-3">
+                    <label className="form-label">Tầng *</label>
+                    <input
+                      type="number"
+                      className={`form-control ${formErrors.floor ? 'is-invalid' : ''}`}
+                      value={tableForm.floor}
+                      onChange={(e) => setTableForm(prev => ({ ...prev, floor: parseInt(e.target.value) || 1 }))}
+                      min="1"
+                    />
+                    {formErrors.floor && (
+                      <div className="invalid-feedback">{formErrors.floor}</div>
+                    )}
+                  </div>
+                  
+                  <div className="mb-3">
+                    <label className="form-label">Trạng thái</label>
+                    <select
+                      className="form-select"
+                      value={tableForm.status}
+                      onChange={(e) => setTableForm(prev => ({ ...prev, status: e.target.value as 'available' | 'unavailable' }))}
+                    >
+                      <option value="available">Có sẵn</option>
+                      <option value="unavailable">Đang sử dụng</option>
+                    </select>
+                  </div>
+                </form>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setShowCreateModal(false);
+                    resetForm();
+                  }}
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-success"
+                  onClick={handleSubmitCreate}
+                  disabled={submitting}
+                >
+                  {submitting ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-1"></span>
+                      Đang tạo...
+                    </>
+                  ) : (
+                    <>
+                      <i className="bi bi-check me-1"></i>
+                      Tạo bàn
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Table Modal */}
+      {showEditModal && tableToEdit && (
+        <div className="modal show d-block" tabIndex={-1}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">
+                  <i className="bi bi-pencil me-2"></i>
+                  Chỉnh sửa {tableToEdit.name}
+                </h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setTableToEdit(null);
+                    resetForm();
+                  }}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <form>
+                  <div className="mb-3">
+                    <label className="form-label">Tên bàn *</label>
+                    <input
+                      type="text"
+                      className={`form-control ${formErrors.name ? 'is-invalid' : ''}`}
+                      value={tableForm.name}
+                      onChange={(e) => setTableForm(prev => ({ ...prev, name: e.target.value }))}
+                      placeholder="Ví dụ: Bàn 1, Bàn VIP A..."
+                    />
+                    {formErrors.name && (
+                      <div className="invalid-feedback">{formErrors.name}</div>
+                    )}
+                  </div>
+                  
+                  <div className="mb-3">
+                    <label className="form-label">Tầng *</label>
+                    <input
+                      type="number"
+                      className={`form-control ${formErrors.floor ? 'is-invalid' : ''}`}
+                      value={tableForm.floor}
+                      onChange={(e) => setTableForm(prev => ({ ...prev, floor: parseInt(e.target.value) || 1 }))}
+                      min="1"
+                    />
+                    {formErrors.floor && (
+                      <div className="invalid-feedback">{formErrors.floor}</div>
+                    )}
+                  </div>
+                  
+                  <div className="mb-3">
+                    <label className="form-label">Trạng thái</label>
+                    <select
+                      className="form-select"
+                      value={tableForm.status}
+                      onChange={(e) => setTableForm(prev => ({ ...prev, status: e.target.value as 'available' | 'unavailable' }))}
+                    >
+                      <option value="available">Có sẵn</option>
+                      <option value="unavailable">Đang sử dụng</option>
+                    </select>
+                  </div>
+                </form>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setTableToEdit(null);
+                    resetForm();
+                  }}
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleSubmitEdit}
+                  disabled={submitting}
+                >
+                  {submitting ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-1"></span>
+                      Đang cập nhật...
+                    </>
+                  ) : (
+                    <>
+                      <i className="bi bi-check me-1"></i>
+                      Cập nhật
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirm Modal */}
+      {showDeleteConfirm && tableToDelete && (
+        <div className="modal show d-block" tabIndex={-1}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title text-danger">
+                  <i className="bi bi-exclamation-triangle me-2"></i>
+                  Xác nhận xóa bàn
+                </h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setTableToDelete(null);
+                  }}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <div className="alert alert-warning">
+                  <i className="bi bi-exclamation-triangle me-2"></i>
+                  <strong>Cảnh báo:</strong> Hành động này không thể hoàn tác!
+                </div>
+                
+                <p>
+                  Bạn có chắc chắn muốn xóa <strong>{tableToDelete.name}</strong> không?
+                </p>
+                
+                <div className="bg-light p-3 rounded">
+                  <div className="row">
+                    <div className="col-6">
+                      <small className="text-muted">Tên bàn:</small>
+                      <div className="fw-bold">{tableToDelete.name}</div>
+                    </div>
+                    <div className="col-6">
+                      <small className="text-muted">Tầng:</small>
+                      <div className="fw-bold">Tầng {tableToDelete.floor}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setTableToDelete(null);
+                  }}
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={handleConfirmDelete}
+                >
+                  <i className="bi bi-trash me-1"></i>
+                  Xóa bàn
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCreateModal || showEditModal || showDeleteConfirm ? (
+        <div className="modal-backdrop show"></div>
+      ) : null}
+
+    </AdminLayout>
+  );
+};
+
+export default AdminTables;

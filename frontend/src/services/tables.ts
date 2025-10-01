@@ -63,5 +63,38 @@ export const tablesApi = {
       message?: string;
     }>('/tables/change/', data);
   },
+
+  createTable: (data: {
+    name: string;
+    floor: number;
+    status: 'available' | 'unavailable';
+  }) => {
+    return api.post<{
+      success: boolean;
+      data: Table;
+      message?: string;
+    }>('/tables/', data);
+  },
+
+  // Cập nhật bàn
+  updateTable: (tableId: number, data: {
+    name: string;
+    floor: number;
+    status: 'available' | 'unavailable';
+  }) => {
+    return api.patch<{
+      success: boolean;
+      data: Table;
+      message?: string;
+    }>(`/tables/${tableId}/`, data);
+  },
+
+  // Xóa bàn
+  deleteTable: (tableId: number) => {
+    return api.delete<{
+      success: boolean;
+      message?: string;
+    }>(`/tables/${tableId}/`);
+  },
   
 };
