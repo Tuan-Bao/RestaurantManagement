@@ -524,3 +524,46 @@ class OrderItemStatusUpdateView(generics.UpdateAPIView):
             'message': f'Updated order item status from "{old_status}" to "{status_value}"',
             'data': OrderItemSerializer(order_item).data
         })
+
+
+class OrderItemDeleteView(generics.DestroyAPIView):
+    """
+    DELETE /api/orders/items/{id}/ - Xóa order item
+    """
+    queryset = OrderItem.objects.all()
+    permission_classes = [IsAuthenticated]
+    
+    def destroy(self, request, *args, **kwargs):
+        order_item = self.get_object()
+        
+        # Kiểm tra order đã thanh toán chưa
+        if order_item.order.status == 'paid':
+            return Response({
+                'success': False,
+                'message': 'Cannot delete item from paid order'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Kiểm tra trạng thái order item
+        if order_item.status in ['cooking', 'done']:
+            return Response({
+                'success': False,
+                'message': f'Cannot delete item with status "{order_item.status}". Only items with status "ordered" or "cancelled" can be deleted.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Lưu thông tin trước khi xóa
+        item_info = {
+            'id': order_item.id,
+            'menu_item_name': order_item.menu_item.name if order_item.menu_item else 'N/A',
+            'quantity': order_item.quantity,
+            'status': order_item.status,
+            'order_id': order_item.order.id if order_item.order else None
+        }
+        
+        # Xóa order item
+        order_item.delete()
+        
+        return Response({
+            'success': True,
+            'message': 'Order item deleted successfully',
+            'deleted_item': item_info
+        }, status=status.HTTP_200_OK)
