@@ -122,7 +122,7 @@ class OrderHistorySerializer(serializers.ModelSerializer):
     table_floor = serializers.IntegerField(source='table.floor', read_only=True)
     user_name = serializers.CharField(source='user.name', read_only=True)
     table_info = serializers.SerializerMethodField()
-    order_items = serializers.SerializerMethodField()  # Add order_items
+    order_items = serializers.SerializerMethodField()
     total_amount = serializers.SerializerMethodField()
     payment_info = serializers.SerializerMethodField()
     
@@ -144,27 +144,41 @@ class OrderHistorySerializer(serializers.ModelSerializer):
         return None
     
     def get_order_items(self, obj):
-        """Get order items with detailed information"""
-        items = obj.order_items.all()
-        result = []
+        """Get order items with ingredient information"""
+        items = obj.order_items.select_related('menu_item').prefetch_related(
+            'menu_item__recipes__ingredient'
+        ).all()
         
+        result = []
         for item in items:
+            # Get ingredients for this menu item
+            ingredients = []
+            if item.menu_item and hasattr(item.menu_item, 'recipes'):
+                for recipe in item.menu_item.recipes.all():
+                    if recipe.ingredient:
+                        ingredients.append({
+                            'id': recipe.ingredient.id,
+                            'name': recipe.ingredient.name,
+                            'quantity_required': float(recipe.quantity_required) if recipe.quantity_required else 0,
+                            'unit': recipe.ingredient.unit if hasattr(recipe.ingredient, 'unit') else ''
+                        })
+            
             result.append({
                 'id': item.id,
                 'menu_item': item.menu_item_id,
-                'menu_item_name': item.menu_item.name,
-                'menu_item_price': item.menu_item.price,
-                'status': item.status,
-                'price_each': item.price_each,
+                'menu_item_name': item.menu_item.name if item.menu_item else 'N/A',
+                'menu_item_price': float(item.menu_item.price) if item.menu_item and item.menu_item.price else 0,
                 'quantity': item.quantity,
                 'note': item.note,
-                'subtotal': (item.quantity or 0) * (item.price_each or 0),
+                'status': item.status,
+                'price_each': float(item.price_each) if item.price_each else 0,
+                'subtotal': float((item.quantity or 0) * (item.price_each or 0)),
+                'ingredients': ingredients,
                 'created_at': item.created_at,
                 'updated_at': item.updated_at
             })
         
-        # Sort by creation time
-        return sorted(result, key=lambda x: x['created_at'])
+        return result
     
     def get_total_amount(self, obj):
         return sum((item.quantity or 0) * (item.price_each or 0) for item in obj.order_items.all())
