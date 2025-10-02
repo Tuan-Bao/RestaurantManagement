@@ -34,8 +34,11 @@ class Ingredient(models.Model):
 
     @property
     def is_low_stock(self):
-        """Check if current stock is below minimum threshold"""
-        return (self.stock_quantity or 0) <= (self.min_quantity or 0)
+        """Check if current stock is below minimum threshold but not zero"""
+        current_stock = self.stock_quantity or 0
+        min_stock = self.min_quantity or 0
+        # Chỉ coi là "sắp hết" khi còn hàng nhưng dưới mức tối thiểu
+        return current_stock > 0 and current_stock <= min_stock
 
     @property
     def total_value(self):
