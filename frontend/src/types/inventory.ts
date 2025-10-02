@@ -86,6 +86,7 @@ export interface StockOutCreateData {
 export interface IngredientUpdateData {
   name: string;
   unit: string;
+  min_quantity?: number;
 }
 
 // Filter Types

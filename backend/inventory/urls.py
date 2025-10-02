@@ -27,14 +27,14 @@ urlpatterns = [
 # APIs:
 # Warehouse (Kho):
 # GET    /api/inventory/warehouse/?name=...&status=...   - Xem danh sách nguyên liệu trong kho (Staff & Admin)
-# PATCH  /api/inventory/warehouse/{id}/                  - Cập nhật tên và đơn vị nguyên liệu (Admin only)
+# PATCH  /api/inventory/warehouse/{id}/                  - Cập nhật tên, đơn vị và ngưỡng tối thiểu nguyên liệu (Admin only)
 
 # Stock-in (Nhập kho):
-# GET  /api/inventory/stock-in/?ingredient_name=...&date_from=...&date_to=... - Danh sách lịch sử nhập (Staff & Admin)  
+# GET  /api/inventory/stock-in/?ingredient_name=...&date_from=...&date_to=... - Danh sách lịch sử nhập (Admin only)  
 # POST /api/inventory/stock-in/                    - Nhập kho mới (Admin only) - Tự động tạo/cập nhật nguyên liệu trong kho
-# GET  /api/inventory/stock-in/{id}/               - Chi tiết phiếu nhập (Staff & Admin)
+# GET  /api/inventory/stock-in/{id}/               - Chi tiết phiếu nhập (Admin only)
 
 # Stock-out (Xuất kho):
-# GET  /api/inventory/stock-out/?ingredient_name=...&date_from=...&date_to=... - Danh sách lịch sử xuất (Staff & Admin)  
+# GET  /api/inventory/stock-out/?ingredient_name=...&date_from=...&date_to=... - Danh sách lịch sử xuất (Admin only)  
 # POST /api/inventory/stock-out/                   - Xuất kho thủ công (Admin only) - Tự động cập nhật tồn kho
-# GET  /api/inventory/stock-out/{id}/              - Chi tiết phiếu xuất (Staff & Admin)
+# GET  /api/inventory/stock-out/{id}/              - Chi tiết phiếu xuất (Admin only)
