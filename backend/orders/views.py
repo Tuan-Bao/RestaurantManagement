@@ -23,7 +23,7 @@ class OrderListCreateView(generics.ListCreateAPIView):
     GET  /api/orders/?table=...&status=...&floor=...&date_from=...&date_to=... - Danh sách đơn hàng + lịch sử
     POST /api/orders/                      - Tạo đơn hàng mới + thêm món
     """
-    permission_classes = []  # Temporarily disabled for testing
+    permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
         queryset = Order.objects.select_related('table', 'user').prefetch_related(
