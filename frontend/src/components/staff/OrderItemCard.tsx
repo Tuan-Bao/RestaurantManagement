@@ -12,45 +12,36 @@ const OrderItemCard: React.FC<OrderItemCardProps> = ({
   onStatusChange,
   onItemDelete,
 }) => {
-  const getStatusBadge = (status: OrderItem["status"]) => {
-    const statusConfig = {
-      pending: { color: "secondary", text: "Chờ xử lý", icon: "bi-clock" },
-      preparing: {
-        color: "warning",
-        text: "Đang làm",
-        icon: "bi-hourglass-split",
-      },
-      ready: { color: "success", text: "Sẵn sàng", icon: "bi-check-circle" },
-      served: {
-        color: "primary",
-        text: "Đã phục vụ",
-        icon: "bi-check-circle-fill",
-      },
+  const getStatusBadge = (backendStatus?: string) => {
+    // Map backend status to display info
+    const statusConfig: { [key: string]: { color: string; text: string; icon: string } } = {
+      ordered: { color: "secondary", text: "Chờ xử lý", icon: "bi-clock" },
+      cooking: { color: "warning", text: "Đang nấu", icon: "bi-hourglass-split" },
+      done: { color: "success", text: "Hoàn thành", icon: "bi-check-circle-fill" },
+      cancelled: { color: "danger", text: "Đã hủy", icon: "bi-x-circle" },
     };
-    return statusConfig[status];
+
+    return statusConfig[backendStatus || 'ordered'] || statusConfig.ordered;
   };
 
-  const statusInfo = getStatusBadge(item.status);
+  // Get backend status or fallback to frontend status mapping
+  const backendStatus = (item as any)?.backendStatus || 'ordered';
+  const statusInfo = getStatusBadge(backendStatus);
+  const isCancelled = backendStatus === 'cancelled';
 
-  // Check if item is cancelled in backend
-  const isCancelled = (item as any)?.backendStatus === 'cancelled';
-
-  const getNextStatus = (
-    currentStatus: OrderItem["status"]
-  ): OrderItem["status"] | null => {
-    switch (currentStatus) {
-      case "pending":
-        return "preparing";
-      case "preparing":
-        return "ready";
-      case "ready":
-        return "served";
+  const getNextBackendStatus = (currentBackendStatus: string): string | null => {
+    switch (currentBackendStatus) {
+      case "ordered":
+        return "cooking";
+      case "cooking":
+        return "done";
       default:
         return null;
     }
   };
 
-  const nextStatus = getNextStatus(item.status);
+  const nextBackendStatus = getNextBackendStatus(backendStatus);
+  const nextStatusInfo = nextBackendStatus ? getStatusBadge(nextBackendStatus) : null;
 
   return (
     <div className="card mb-2 order-item-card">
@@ -100,26 +91,29 @@ const OrderItemCard: React.FC<OrderItemCardProps> = ({
 
         {/* Action Buttons */}
         <div className="d-flex gap-2 mt-3">
-          {!isCancelled && nextStatus && (
+          {!isCancelled && nextBackendStatus && nextStatusInfo && (
             <button
-              className={`btn btn-sm btn-${getStatusBadge(nextStatus).color}`}
+              className={`btn btn-sm btn-${nextStatusInfo.color}`}
               onClick={() => {
                 console.log('Changing item status:', {
                   itemId: item.id,
-                  from: item.status,
-                  to: nextStatus
+                  from: backendStatus,
+                  to: nextBackendStatus
                 });
-                onStatusChange(item.id, nextStatus);
+                // Map backend status to frontend status for API call
+                const frontendStatus: OrderItem["status"] =
+                  nextBackendStatus === "cooking" ? "preparing" :
+                    nextBackendStatus === "done" ? "served" : "pending";
+                onStatusChange(item.id, frontendStatus);
               }}
             >
-              <i className={`${getStatusBadge(nextStatus).icon} me-1`}></i>
-              {nextStatus === "preparing" && "Bắt đầu làm"}
-              {nextStatus === "ready" && "Hoàn thành"}
-              {nextStatus === "served" && "Đã phục vụ"}
+              <i className={`${nextStatusInfo.icon} me-1`}></i>
+              {nextBackendStatus === "cooking" && "Bắt đầu nấu"}
+              {nextBackendStatus === "done" && "Hoàn thành"}
             </button>
           )}
 
-          {!isCancelled && item.status === "pending" && (
+          {!isCancelled && backendStatus === "ordered" && (
             <button
               className="btn btn-sm btn-outline-danger"
               onClick={() => {

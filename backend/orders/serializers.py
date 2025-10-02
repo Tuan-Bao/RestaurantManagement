@@ -95,7 +95,12 @@ class OrderSerializer(serializers.ModelSerializer):
         return sorted(result, key=lambda x: x['menu_item_name'])
     
     def get_total_amount(self, obj):
-        return sum((item.quantity or 0) * (item.price_each or 0) for item in obj.order_items.all())
+        """Calculate total amount excluding cancelled items"""
+        return sum(
+            (item.quantity or 0) * (item.price_each or 0) 
+            for item in obj.order_items.all() 
+            if item.status != 'cancelled'
+        )
     
     def get_items_count(self, obj):
         """Count unique menu_item + status combinations"""
@@ -181,7 +186,12 @@ class OrderHistorySerializer(serializers.ModelSerializer):
         return result
     
     def get_total_amount(self, obj):
-        return sum((item.quantity or 0) * (item.price_each or 0) for item in obj.order_items.all())
+        """Calculate total amount excluding cancelled items"""
+        return sum(
+            (item.quantity or 0) * (item.price_each or 0) 
+            for item in obj.order_items.all() 
+            if item.status != 'cancelled'
+        )
     
     def get_payment_info(self, obj):
         """Get payment information for the order"""
