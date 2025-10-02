@@ -100,16 +100,16 @@ const StaffOrders: React.FC = () => {
 
   const handleItemDelete = async (orderId: number, itemId: number) => {
     try {
-      const response = await ordersApiService.deleteOrderItem(itemId);
+      const response = await ordersApiService.cancelOrderItem(itemId);
 
       if (response.data.success) {
         await fetchOrders();
       } else {
-        throw new Error('Không thể xóa món ăn');
+        throw new Error('Không thể hủy món ăn');
       }
     } catch (err) {
       console.error('Error deleting item:', err);
-      alert('Có lỗi xảy ra khi xóa món ăn');
+      alert('Có lỗi xảy ra khi hủy món ăn');
     }
   };
 
