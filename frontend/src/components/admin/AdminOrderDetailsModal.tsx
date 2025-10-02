@@ -15,22 +15,14 @@ const AdminOrderDetailsModal: React.FC<AdminOrderDetailsModalProps> = ({
 }) => {
     if (!show) return null;
 
-    const getStatusBadge = (status: OrderItem["status"]) => {
-        const statusConfig = {
-            pending: { color: "secondary", text: "Chờ xử lý", icon: "bi-clock" },
-            preparing: {
-                color: "warning",
-                text: "Đang làm",
-                icon: "bi-hourglass-split",
-            },
-            ready: { color: "success", text: "Sẵn sàng", icon: "bi-check-circle" },
-            served: {
-                color: "primary",
-                text: "Đã phục vụ",
-                icon: "bi-check-circle-fill",
-            },
+    const getStatusBadge = (backendStatus?: string) => {
+        const statusConfig: { [key: string]: { color: string; text: string; icon: string } } = {
+            ordered: { color: "secondary", text: "Chờ xử lý", icon: "bi-clock" },
+            cooking: { color: "warning", text: "Đang nấu", icon: "bi-hourglass-split" },
+            done: { color: "success", text: "Hoàn thành", icon: "bi-check-circle-fill" },
+            cancelled: { color: "danger", text: "Đã hủy", icon: "bi-x-circle" },
         };
-        return statusConfig[status];
+        return statusConfig[backendStatus || 'ordered'] || statusConfig.ordered;
     };
 
     const getOrderStatusBadge = (status: Order["status"]) => {
@@ -51,10 +43,7 @@ const AdminOrderDetailsModal: React.FC<AdminOrderDetailsModalProps> = ({
     };
 
     const orderStatusInfo = getOrderStatusBadge(order.status);
-    const timeInfo = {
-        createdAt: new Date(order.createdAt).toLocaleString("vi-VN"),
-        updatedAt: new Date(order.updatedAt).toLocaleString("vi-VN"),
-    };
+    const createdAt = new Date(order.createdAt).toLocaleString("vi-VN");
 
     return createPortal(
         <div className="modal show d-block" tabIndex={-1}>
@@ -98,16 +87,8 @@ const AdminOrderDetailsModal: React.FC<AdminOrderDetailsModalProps> = ({
                                                 <div className="mb-2">{order.tableName} ({order.floorName})</div>
                                             </div>
                                             <div className="col-6">
-                                                <strong>Khách hàng:</strong>
-                                                <div className="mb-2">{order.customerName || "Khách vãng lai"}</div>
-                                            </div>
-                                            <div className="col-6">
                                                 <strong>Thời gian đặt:</strong>
-                                                <div className="mb-2">{timeInfo.createdAt}</div>
-                                            </div>
-                                            <div className="col-6">
-                                                <strong>Cập nhật cuối:</strong>
-                                                <div className="mb-2">{timeInfo.updatedAt}</div>
+                                                <div className="mb-2">{createdAt}</div>
                                             </div>
                                         </div>
                                     </div>
@@ -127,14 +108,14 @@ const AdminOrderDetailsModal: React.FC<AdminOrderDetailsModalProps> = ({
                                         <div className="row text-center">
                                             <div className="col-4">
                                                 <div className="border-end">
-                                                    <h4 className="text-primary mb-1">{order.items.length}</h4>
+                                                    <h4 className="text-primary mb-1">{(order.items || []).length}</h4>
                                                     <small className="text-muted">Món</small>
                                                 </div>
                                             </div>
                                             <div className="col-4">
                                                 <div className="border-end">
                                                     <h4 className="text-success mb-1">
-                                                        {order.items.reduce((sum, item) => sum + item.quantity, 0)}
+                                                        {(order.items || []).reduce((sum, item) => sum + item.quantity, 0)}
                                                     </h4>
                                                     <small className="text-muted">Số lượng</small>
                                                 </div>
@@ -151,15 +132,15 @@ const AdminOrderDetailsModal: React.FC<AdminOrderDetailsModalProps> = ({
 
                                         <div className="row">
                                             <div className="col-6">
-                                                <strong>Đã phục vụ:</strong>
+                                                <strong>Hoàn thành:</strong>
                                                 <div className="text-success">
-                                                    {order.items.filter(item => item.status === "served").length} món
+                                                    {(order.items || []).filter(item => (item as any)?.backendStatus === "done").length} món
                                                 </div>
                                             </div>
                                             <div className="col-6">
-                                                <strong>Đang làm:</strong>
+                                                <strong>Đang nấu:</strong>
                                                 <div className="text-warning">
-                                                    {order.items.filter(item => item.status === "preparing").length} món
+                                                    {(order.items || []).filter(item => (item as any)?.backendStatus === "cooking").length} món
                                                 </div>
                                             </div>
                                         </div>
@@ -173,7 +154,7 @@ const AdminOrderDetailsModal: React.FC<AdminOrderDetailsModalProps> = ({
                             <div className="card-header">
                                 <h6 className="mb-0">
                                     <i className="bi bi-list me-2"></i>
-                                    Chi tiết món ăn ({order.items.length} món)
+                                    Chi tiết món ăn ({(order.items || []).length} món)
                                 </h6>
                             </div>
                             <div className="card-body p-0">
@@ -189,8 +170,9 @@ const AdminOrderDetailsModal: React.FC<AdminOrderDetailsModalProps> = ({
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {order.items.map((item) => {
-                                                const statusInfo = getStatusBadge(item.status);
+                                            {(order.items || []).map((item) => {
+                                                const backendStatus = (item as any)?.backendStatus || 'ordered';
+                                                const statusInfo = getStatusBadge(backendStatus);
                                                 return (
                                                     <tr key={item.id}>
                                                         <td>
@@ -228,10 +210,6 @@ const AdminOrderDetailsModal: React.FC<AdminOrderDetailsModalProps> = ({
                         <button className="btn btn-outline-primary">
                             <i className="bi bi-printer me-1"></i>
                             In hóa đơn
-                        </button>
-                        <button className="btn btn-outline-success">
-                            <i className="bi bi-download me-1"></i>
-                            Xuất Excel
                         </button>
                         {order.status === "active" && (
                             <button className="btn btn-outline-danger">

@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from "react";
 import AdminLayout from "../../layouts/AdminLayout";
 import AdminOrderDetailsModal from "../../components/admin/AdminOrderDetailsModal";
-import { ordersApiService, transformOrderData } from "../../services/ordersApi";
+import ordersService from "../../services/ordersService";
 import type { Order } from "../../types/order";
 
 const AdminOrders: React.FC = () => {
+    const [activeFloor, setActiveFloor] = useState<number>(0); // 0 = all floors
     const [orders, setOrders] = useState<Order[]>([]);
     const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
@@ -12,107 +13,116 @@ const AdminOrders: React.FC = () => {
     const [showOrderModal, setShowOrderModal] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [filters, setFilters] = useState({
+        status: "all",
         search: "",
         sortBy: "newest",
-        dateRange: "all", // all, today, week, month, year
+        dateRange: "today",
     });
 
-    // Load orders from API
-    const loadOrders = useCallback(async () => {
+    // Helper function để chuyển đổi dateRange thành date
+    const getDateFromRange = (range: string): string | undefined => {
+        const now = new Date();
+        switch (range) {
+            case "today":
+                return now.toISOString().split('T')[0];
+            case "week":
+                const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                return weekAgo.toISOString().split('T')[0];
+            case "month":
+                const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                return monthAgo.toISOString().split('T')[0];
+            default:
+                return undefined;
+        }
+    };
+
+    // Lấy danh sách đơn hàng từ API
+    const fetchOrders = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
 
-            // Calculate date range for API filter
-            let dateFrom: string | undefined;
-            const today = new Date();
-
-            switch (filters.dateRange) {
-                case 'today':
-                    dateFrom = today.toISOString().split('T')[0];
-                    break;
-                case 'week':
-                    const weekAgo = new Date(today);
-                    weekAgo.setDate(today.getDate() - 7);
-                    dateFrom = weekAgo.toISOString().split('T')[0];
-                    break;
-                case 'month':
-                    const monthAgo = new Date(today);
-                    monthAgo.setMonth(today.getMonth() - 1);
-                    dateFrom = monthAgo.toISOString().split('T')[0];
-                    break;
-                case 'year':
-                    const yearAgo = new Date(today);
-                    yearAgo.setFullYear(today.getFullYear() - 1);
-                    dateFrom = yearAgo.toISOString().split('T')[0];
-                    break;
-                default:
-                    dateFrom = undefined;
-            }
-
-            const response = await ordersApiService.getAllOrders({
-                search: filters.search || undefined,
-                date_from: dateFrom,
-                page_size: 1000
+            const apiFilters = ordersService.transformFiltersToAPI({
+                status: filters.status,
+                search: filters.search,
+                floorId: activeFloor > 0 ? activeFloor : undefined,
+                dateFrom: getDateFromRange(filters.dateRange),
             });
 
-            if (response.data.success && Array.isArray(response.data.data)) {
-                const transformedOrders = response.data.data
-                    .map(transformOrderData)
-                    .filter((order: Order) => order.status !== 'cancelled'); // Exclude cancelled orders
+            const response = await ordersService.getOrders(apiFilters);
+
+            if (response.success) {
+                const transformedOrders = response.data.map(order =>
+                    ordersService.transformOrderFromAPI(order)
+                );
                 setOrders(transformedOrders);
             } else {
-                setOrders([]);
-                console.warn('No orders data received from API');
+                throw new Error('Không thể tải danh sách đơn hàng');
             }
         } catch (err) {
-            console.error('Error loading orders:', err);
-            setError('Không thể tải dữ liệu đơn hàng');
+            console.error('Error fetching orders:', err);
+            setError(err instanceof Error ? err.message : 'Có lỗi xảy ra khi tải dữ liệu');
         } finally {
             setLoading(false);
         }
-    }, [filters]);
+    }, [filters, activeFloor]);
 
+    // Load orders khi component mount hoặc dependencies thay đổi
     useEffect(() => {
-        loadOrders();
-    }, [loadOrders]);
+        fetchOrders();
+    }, [fetchOrders]);
 
-    // Apply client-side filtering and sorting
+    // Apply filters whenever orders change
     useEffect(() => {
-        let filtered = [...orders];
+        applyFilters();
+    }, [orders]);
+
+    const applyFilters = () => {
+        let filtered = orders;
+
+        // Filter by status
+        if (filters.status !== "all") {
+            filtered = filtered.filter((order: Order) => order.status === filters.status);
+        }
 
         // Filter by search
         if (filters.search.trim()) {
             const searchLower = filters.search.toLowerCase().trim();
             filtered = filtered.filter(
-                order =>
+                (order: Order) =>
                     order.orderNumber.toLowerCase().includes(searchLower) ||
                     order.tableName.toLowerCase().includes(searchLower) ||
                     order.customerName?.toLowerCase().includes(searchLower) ||
-                    (order.items || []).some(item =>
+                    order.items.some((item: any) =>
                         item.menuItemName.toLowerCase().includes(searchLower)
                     )
             );
         }
 
-        // Sort orders
-        filtered.sort((a, b) => {
-            switch (filters.sortBy) {
-                case "newest":
-                    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-                case "oldest":
-                    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-                case "amount-high":
-                    return b.totalAmount - a.totalAmount;
-                case "amount-low":
-                    return a.totalAmount - b.totalAmount;
-                default:
-                    return 0;
-            }
-        });
+        // Apply sorting
+        switch (filters.sortBy) {
+            case "newest":
+                filtered.sort(
+                    (a: Order, b: Order) =>
+                        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                );
+                break;
+            case "oldest":
+                filtered.sort(
+                    (a: Order, b: Order) =>
+                        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+                );
+                break;
+            case "amount-high":
+                filtered.sort((a: Order, b: Order) => b.totalAmount - a.totalAmount);
+                break;
+            case "amount-low":
+                filtered.sort((a: Order, b: Order) => a.totalAmount - b.totalAmount);
+                break;
+        }
 
         setFilteredOrders(filtered);
-    }, [orders, filters]);
+    };
 
     const handleFilterChange = (key: string, value: string) => {
         setFilters(prev => ({
@@ -124,11 +134,9 @@ const AdminOrders: React.FC = () => {
     const getOrderStats = () => {
         const active = filteredOrders.filter(order => order.status === "active").length;
         const completed = filteredOrders.filter(order => order.status === "completed").length;
-        const totalRevenue = filteredOrders
-            .filter(order => order.status === "completed")
-            .reduce((sum, order) => sum + order.totalAmount, 0);
+        const cancelled = filteredOrders.filter(order => order.status === "cancelled").length;
 
-        return { active, completed, totalRevenue, total: filteredOrders.length };
+        return { active, completed, cancelled, total: filteredOrders.length };
     };
 
     const getOrderStatusBadge = (status: Order["status"]) => {
@@ -158,30 +166,33 @@ const AdminOrders: React.FC = () => {
         setSelectedOrder(null);
     };
 
+    // Calculate stats from filtered orders
     const stats = getOrderStats();
 
+    // Loading state
     if (loading) {
         return (
             <AdminLayout>
                 <div className="d-flex justify-content-center align-items-center" style={{ height: "50vh" }}>
-                    <div className="text-center">
-                        <div className="spinner-border text-primary mb-3" role="status">
-                            <span className="visually-hidden">Đang tải...</span>
-                        </div>
-                        <p className="text-muted">Đang tải danh sách đơn hàng...</p>
+                    <div className="spinner-border text-primary" role="status">
+                        <span className="visually-hidden">Đang tải...</span>
                     </div>
                 </div>
             </AdminLayout>
         );
     }
 
+    // Error state
     if (error) {
         return (
             <AdminLayout>
                 <div className="alert alert-danger" role="alert">
-                    <h4 className="alert-heading">Lỗi!</h4>
-                    <p>{error}</p>
-                    <button className="btn btn-outline-danger" onClick={loadOrders}>
+                    <i className="bi bi-exclamation-triangle me-2"></i>
+                    {error}
+                    <button
+                        className="btn btn-outline-danger ms-3"
+                        onClick={fetchOrders}
+                    >
                         Thử lại
                     </button>
                 </div>
@@ -203,9 +214,13 @@ const AdminOrders: React.FC = () => {
                 </div>
 
                 <div className="d-flex gap-2">
-                    <button className="btn btn-outline-primary" onClick={loadOrders}>
+                    <button className="btn btn-primary" onClick={fetchOrders} disabled={loading}>
                         <i className="bi bi-arrow-clockwise me-1"></i>
                         Làm mới
+                    </button>
+                    <button className="btn btn-success">
+                        <i className="bi bi-plus me-1"></i>
+                        Tạo đơn mới
                     </button>
                 </div>
             </div>
@@ -216,12 +231,12 @@ const AdminOrders: React.FC = () => {
                     <div className="card border-0 shadow-sm">
                         <div className="card-body">
                             <div className="d-flex align-items-center">
-                                <div className="bg-success bg-opacity-10 rounded-3 p-3 me-3">
+                                <div className="bg-success bg-opacity-10 rounded p-3 me-3">
                                     <i className="bi bi-play-circle text-success fs-4"></i>
                                 </div>
                                 <div>
-                                    <p className="text-muted mb-1">Đang hoạt động</p>
-                                    <h3 className="mb-0">{stats.active}</h3>
+                                    <p className="text-muted mb-1 small">Đang hoạt động</p>
+                                    <h4 className="mb-0 text-success">{stats.active}</h4>
                                 </div>
                             </div>
                         </div>
@@ -232,12 +247,12 @@ const AdminOrders: React.FC = () => {
                     <div className="card border-0 shadow-sm">
                         <div className="card-body">
                             <div className="d-flex align-items-center">
-                                <div className="bg-primary bg-opacity-10 rounded-3 p-3 me-3">
+                                <div className="bg-primary bg-opacity-10 rounded p-3 me-3">
                                     <i className="bi bi-check-circle-fill text-primary fs-4"></i>
                                 </div>
                                 <div>
-                                    <p className="text-muted mb-1">Hoàn thành</p>
-                                    <h3 className="mb-0">{stats.completed}</h3>
+                                    <p className="text-muted mb-1 small">Hoàn thành</p>
+                                    <h4 className="mb-0 text-primary">{stats.completed}</h4>
                                 </div>
                             </div>
                         </div>
@@ -248,12 +263,12 @@ const AdminOrders: React.FC = () => {
                     <div className="card border-0 shadow-sm">
                         <div className="card-body">
                             <div className="d-flex align-items-center">
-                                <div className="bg-warning bg-opacity-10 rounded-3 p-3 me-3">
-                                    <i className="bi bi-currency-dollar text-warning fs-4"></i>
+                                <div className="bg-danger bg-opacity-10 rounded p-3 me-3">
+                                    <i className="bi bi-x-circle text-danger fs-4"></i>
                                 </div>
                                 <div>
-                                    <p className="text-muted mb-1">Doanh thu</p>
-                                    <h5 className="mb-0">{stats.totalRevenue.toLocaleString('vi-VN')}đ</h5>
+                                    <p className="text-muted mb-1 small">Đã hủy</p>
+                                    <h4 className="mb-0 text-danger">{stats.cancelled}</h4>
                                 </div>
                             </div>
                         </div>
@@ -264,12 +279,12 @@ const AdminOrders: React.FC = () => {
                     <div className="card border-0 shadow-sm">
                         <div className="card-body">
                             <div className="d-flex align-items-center">
-                                <div className="bg-info bg-opacity-10 rounded-3 p-3 me-3">
+                                <div className="bg-info bg-opacity-10 rounded p-3 me-3">
                                     <i className="bi bi-receipt text-info fs-4"></i>
                                 </div>
                                 <div>
-                                    <p className="text-muted mb-1">Tổng đơn</p>
-                                    <h3 className="mb-0">{stats.total}</h3>
+                                    <p className="text-muted mb-1 small">Tổng đơn</p>
+                                    <h4 className="mb-0 text-info">{stats.total}</h4>
                                 </div>
                             </div>
                         </div>
@@ -282,28 +297,35 @@ const AdminOrders: React.FC = () => {
                 <div className="card-body">
                     <div className="row">
                         <div className="col-md-3 mb-3">
-                            <label className="form-label">
-                                <i className="bi bi-calendar-range me-1"></i>
-                                Khoảng thời gian
-                            </label>
+                            <label className="form-label">Trạng thái</label>
+                            <select
+                                className="form-select"
+                                value={filters.status}
+                                onChange={e => handleFilterChange("status", e.target.value)}
+                            >
+                                <option value="all">Tất cả</option>
+                                <option value="active">Đang hoạt động</option>
+                                <option value="completed">Hoàn thành</option>
+                                <option value="cancelled">Đã hủy</option>
+                            </select>
+                        </div>
+
+                        <div className="col-md-3 mb-3">
+                            <label className="form-label">Thời gian</label>
                             <select
                                 className="form-select"
                                 value={filters.dateRange}
                                 onChange={e => handleFilterChange("dateRange", e.target.value)}
                             >
-                                <option value="all">Tất cả</option>
                                 <option value="today">Hôm nay</option>
-                                <option value="week">Tuần này</option>
-                                <option value="month">Tháng này</option>
-                                <option value="year">Năm này</option>
+                                <option value="week">7 ngày qua</option>
+                                <option value="month">30 ngày qua</option>
+                                <option value="all">Tất cả</option>
                             </select>
                         </div>
 
                         <div className="col-md-3 mb-3">
-                            <label className="form-label">
-                                <i className="bi bi-sort-down me-1"></i>
-                                Sắp xếp theo
-                            </label>
+                            <label className="form-label">Sắp xếp theo</label>
                             <select
                                 className="form-select"
                                 value={filters.sortBy}
@@ -315,12 +337,11 @@ const AdminOrders: React.FC = () => {
                                 <option value="amount-low">Giá trị thấp</option>
                             </select>
                         </div>
+                    </div>
 
-                        <div className="col-md-6 mb-3">
-                            <label className="form-label">
-                                <i className="bi bi-search me-1"></i>
-                                Tìm kiếm
-                            </label>
+                    <div className="row">
+                        <div className="col-md-6">
+                            <label className="form-label">Tìm kiếm</label>
                             <input
                                 type="text"
                                 className="form-control"
@@ -349,12 +370,12 @@ const AdminOrders: React.FC = () => {
                             <table className="table table-hover mb-0">
                                 <thead className="table-light">
                                     <tr>
-                                        <th>Số đơn</th>
+                                        <th>Đơn hàng</th>
                                         <th>Bàn</th>
                                         <th>Khách hàng</th>
-                                        <th>Thời gian</th>
-                                        <th className="text-end">Tổng tiền</th>
                                         <th>Trạng thái</th>
+                                        <th className="text-end">Tổng tiền</th>
+                                        <th>Thời gian</th>
                                         <th className="text-center">Thao tác</th>
                                     </tr>
                                 </thead>
@@ -364,32 +385,32 @@ const AdminOrders: React.FC = () => {
                                         return (
                                             <tr key={order.id}>
                                                 <td>
-                                                    <span className="fw-bold">{order.orderNumber}</span>
+                                                    <div className="fw-bold">{order.orderNumber}</div>
+                                                    <small className="text-muted">
+                                                        {order.items.length} món
+                                                    </small>
                                                 </td>
                                                 <td>
-                                                    <span className="text-muted">{order.tableName}</span>
-                                                    <br />
+                                                    <div>{order.tableName}</div>
                                                     <small className="text-muted">{order.floorName}</small>
                                                 </td>
-                                                <td>
-                                                    <span>{order.customerName || "Khách vãng lai"}</span>
-                                                </td>
-                                                <td>
-                                                    <span>{new Date(order.createdAt).toLocaleString("vi-VN")}</span>
-                                                </td>
-                                                <td className="text-end">
-                                                    <span className="fw-bold text-primary">
-                                                        {order.totalAmount.toLocaleString("vi-VN")}đ
-                                                    </span>
-                                                </td>
+                                                <td>{order.customerName || "Khách vãng lai"}</td>
                                                 <td>
                                                     <span className={`badge bg-${statusInfo.color}`}>
                                                         <i className={`${statusInfo.icon} me-1`}></i>
                                                         {statusInfo.text}
                                                     </span>
                                                 </td>
-                                                <td className="text-center">
-                                                    <div className="btn-group" role="group">
+                                                <td className="text-end fw-bold">
+                                                    {order.totalAmount.toLocaleString("vi-VN")}đ
+                                                </td>
+                                                <td>
+                                                    <div>
+                                                        {new Date(order.createdAt).toLocaleString("vi-VN")}
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div className="d-flex gap-1 justify-content-center">
                                                         <button
                                                             className="btn btn-sm btn-outline-primary"
                                                             title="Xem chi tiết"
@@ -403,6 +424,14 @@ const AdminOrders: React.FC = () => {
                                                         >
                                                             <i className="bi bi-printer"></i>
                                                         </button>
+                                                        {order.status === "active" && (
+                                                            <button
+                                                                className="btn btn-sm btn-outline-danger"
+                                                                title="Hủy đơn"
+                                                            >
+                                                                <i className="bi bi-x-circle"></i>
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>
