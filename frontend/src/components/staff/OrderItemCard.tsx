@@ -117,13 +117,13 @@ const OrderItemCard: React.FC<OrderItemCardProps> = ({
             <button
               className="btn btn-sm btn-outline-danger"
               onClick={() => {
-                if (confirm(`Bạn có chắc chắn muốn xóa món "${item.menuItemName}" khỏi đơn hàng?`)) {
+                if (confirm(`Bạn có chắc chắn muốn hủy món "${item.menuItemName}" khỏi đơn hàng?`)) {
                   onItemDelete(item.id);
                 }
               }}
             >
               <i className="bi bi-trash me-1"></i>
-              Xóa món
+              Hủy món
             </button>
           )}
 

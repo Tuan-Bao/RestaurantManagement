@@ -1,9 +1,3 @@
-export interface Ingredient {
-  name: string;
-  quantity_required: number;
-  unit: string;
-}
-
 export interface OrderItem {
   id: number;
   menuItemId: number;
@@ -14,7 +8,6 @@ export interface OrderItem {
   status: "pending" | "preparing" | "ready" | "served";
   specialInstructions?: string;
   estimatedTime?: number; // minutes
-  ingredients?: Ingredient[]; // Add ingredients
 }
 
 export interface Order {
