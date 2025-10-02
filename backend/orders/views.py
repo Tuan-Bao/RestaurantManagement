@@ -23,16 +23,17 @@ class OrderListCreateView(generics.ListCreateAPIView):
     GET  /api/orders/?table=...&status=...&floor=...&date_from=...&date_to=... - Danh sách đơn hàng + lịch sử
     POST /api/orders/                      - Tạo đơn hàng mới + thêm món
     """
-    # permission_classes = [IsAuthenticated]  # Temporarily disabled for testing
+    permission_classes = []  # Temporarily disabled for testing
     
     def get_queryset(self):
         queryset = Order.objects.select_related('table', 'user').prefetch_related(
             'order_items__menu_item',
+            'order_items__menu_item__recipes__ingredient',  # Prefetch ingredients
             'payments'  # Prefetch payments for efficiency
         )
         
-        # Custom ordering: floor (asc) → table_name (asc) → order_id (desc)
-        queryset = queryset.order_by('table__floor', 'table__name', '-id')
+        # Custom ordering: Oldest orders first (created_at ascending)
+        queryset = queryset.order_by('created_at')
         
         # Filter by table
         table = self.request.query_params.get('table')
