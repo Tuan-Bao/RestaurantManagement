@@ -6,6 +6,9 @@ import AdminDashboard from "../pages/admin/AdminDashboard";
 import AccountsManagement from "../pages/admin/AdminAccountsManagement";
 import AdminMenu from "../pages/admin/AdminMenu";
 import AdminTables from "../pages/admin/AdminTables";
+import WarehousePage from "../pages/admin/WarehousePage";
+import StockInHistoryPage from "../pages/admin/StockInHistoryPage";
+import StockOutHistoryPage from "../pages/admin/StockOutHistoryPage";
 import StaffDashboard from "../pages/staff/StaffDashboard";
 import StaffTables from "../pages/staff/StaffTables";
 import StaffOrders from "../pages/staff/StaffOrders";
@@ -57,6 +60,34 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute requiredRole="admin">
             <AdminTables />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Inventory Routes */}
+      <Route
+        path="/admin/inventory"
+        element={
+          <ProtectedRoute requiredRole="admin">
+            <WarehousePage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/admin/stock-in"
+        element={
+          <ProtectedRoute requiredRole="admin">
+            <StockInHistoryPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/admin/stock-out"
+        element={
+          <ProtectedRoute requiredRole="admin">
+            <StockOutHistoryPage />
           </ProtectedRoute>
         }
       />
