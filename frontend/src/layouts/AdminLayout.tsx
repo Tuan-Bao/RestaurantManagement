@@ -2,6 +2,19 @@ import React, { type ReactNode, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 
+interface MenuSubItem {
+  path: string;
+  name: string;
+  icon: string;
+}
+
+interface MenuItem {
+  path: string;
+  name: string;
+  icon: string;
+  subItems?: MenuSubItem[];
+}
+
 interface AdminLayoutProps {
   children: ReactNode;
 }
@@ -11,6 +24,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
 
   const handleLogout = async () => {
     try {
@@ -21,11 +35,20 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     }
   };
 
-  const menuItems = [
+  const menuItems: MenuItem[] = [
     { path: "/admin/dashboard", name: "Dashboard", icon: "bi-speedometer2" },
     { path: "/admin/accounts", name: "Quản lý tài khoản", icon: "bi-people" },
     { path: "/admin/tables", name: "Quản lý bàn", icon: "bi-grid-3x3" },
-    { path: "/admin/inventory", name: "Quản lý kho", icon: "bi-box" },
+    { 
+      path: "/admin/inventory", 
+      name: "Quản lý kho", 
+      icon: "bi-box",
+      subItems: [
+        { path: "/admin/inventory", name: "Kho hàng", icon: "bi-box" },
+        { path: "/admin/stock-in", name: "Lịch sử nhập kho", icon: "bi-arrow-down-circle" },
+        { path: "/admin/stock-out", name: "Lịch sử xuất kho", icon: "bi-arrow-up-circle" }
+      ]
+    },
     { path: "/admin/menu", name: "Quản lý menu", icon: "bi-journal-text" },
     { path: "/admin/orders", name: "Quản lý đơn hàng", icon: "bi-cart" },
     { path: "/admin/reports", name: "Báo cáo", icon: "bi-graph-up" },
@@ -76,18 +99,55 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         {/* Navigation Menu */}
         <nav className="nav flex-column p-3">
           {menuItems.map(item => (
-            <Link
-              key={item.path}
-              to={item.path}
-              onClick={closeSidebar}
-              className={`nav-link text-white mb-2 rounded ${
-                location.pathname === item.path ? "bg-primary" : "text-light"
-              }`}
-              style={{ textDecoration: "none" }}
-            >
-              <i className={`${item.icon} me-2`}></i>
-              {item.name}
-            </Link>
+            <div key={item.path}>
+              {item.subItems ? (
+                // Menu item with submenu
+                <div>
+                  <button
+                    onClick={() => setExpandedMenu(expandedMenu === item.path ? null : item.path)}
+                    className={`nav-link text-white mb-2 rounded w-100 text-start border-0 ${
+                      location.pathname.startsWith('/admin/inventory') ? "bg-primary" : "text-light"
+                    }`}
+                    style={{ textDecoration: "none", background: "none" }}
+                  >
+                    <i className={`${item.icon} me-2`}></i>
+                    {item.name}
+                    <i className={`bi ${expandedMenu === item.path ? 'bi-chevron-down' : 'bi-chevron-right'} float-end`}></i>
+                  </button>
+                  {expandedMenu === item.path && (
+                    <div className="ms-3">
+                      {item.subItems.map(subItem => (
+                        <Link
+                          key={subItem.path}
+                          to={subItem.path}
+                          onClick={closeSidebar}
+                          className={`nav-link text-white mb-1 rounded ${
+                            location.pathname === subItem.path ? "bg-secondary" : "text-light"
+                          }`}
+                          style={{ textDecoration: "none", fontSize: "0.9rem" }}
+                        >
+                          <i className={`${subItem.icon} me-2`}></i>
+                          {subItem.name}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                // Regular menu item
+                <Link
+                  to={item.path}
+                  onClick={closeSidebar}
+                  className={`nav-link text-white mb-2 rounded ${
+                    location.pathname === item.path ? "bg-primary" : "text-light"
+                  }`}
+                  style={{ textDecoration: "none" }}
+                >
+                  <i className={`${item.icon} me-2`}></i>
+                  {item.name}
+                </Link>
+              )}
+            </div>
           ))}
         </nav>
 
