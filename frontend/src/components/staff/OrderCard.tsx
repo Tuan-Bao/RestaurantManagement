@@ -12,7 +12,6 @@ interface OrderCardProps {
   ) => void;
   onOrderStatusChange: (orderId: number, status: Order["status"]) => void;
   onItemDelete: (orderId: number, itemId: number) => void;
-  onViewDetails?: (order: Order) => void;
 }
 
 const OrderCard: React.FC<OrderCardProps> = ({
@@ -20,7 +19,6 @@ const OrderCard: React.FC<OrderCardProps> = ({
   onItemStatusChange,
   onOrderStatusChange,
   onItemDelete,
-  onViewDetails,
 }) => {
   const [showModal, setShowModal] = useState(false);
 
@@ -42,17 +40,18 @@ const OrderCard: React.FC<OrderCardProps> = ({
   };
 
   const getOrderProgress = () => {
-    const totalItems = order.items.length;
-    const servedItems = order.items.filter(
+    const items = order.items || [];
+    const totalItems = items.length;
+    const servedItems = items.filter(
       item => item.status === "served"
     ).length;
-    const readyItems = order.items.filter(
+    const readyItems = items.filter(
       item => item.status === "ready"
     ).length;
-    const preparingItems = order.items.filter(
+    const preparingItems = items.filter(
       item => item.status === "preparing"
     ).length;
-    const pendingItems = order.items.filter(
+    const pendingItems = items.filter(
       item => item.status === "pending"
     ).length;
 
@@ -126,7 +125,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
             </small>
             <button
               className="btn btn-sm btn-outline-primary"
-              onClick={() => onViewDetails?.(order)}
+              onClick={() => setShowModal(true)}
             >
               <i className="bi bi-eye me-1"></i>
               Chi tiết
@@ -187,6 +186,29 @@ const OrderCard: React.FC<OrderCardProps> = ({
               {order.totalAmount.toLocaleString("vi-VN")}đ
             </strong>
           </div>
+        </div>
+      </div>
+
+      {/* Order Items */}
+      <div className="card-body">
+        <div className="row">
+          {(order.items || []).map(item => (
+            <div key={item.id} className="col-12 mb-2">
+              <OrderItemCard
+                item={item}
+                onStatusChange={handleItemStatusChange}
+                onItemDelete={handleItemDelete}
+              />
+            </div>
+          ))}
+          {(!order.items || order.items.length === 0) && (
+            <div className="col-12">
+              <div className="text-center py-3 text-muted">
+                <i className="bi bi-cart-x fs-4"></i>
+                <p className="mb-0 mt-2">Chưa có món ăn nào</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
