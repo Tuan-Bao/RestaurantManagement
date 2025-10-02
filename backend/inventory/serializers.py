@@ -18,16 +18,23 @@ class IngredientSerializer(serializers.ModelSerializer):
 
 
 class IngredientUpdateSerializer(serializers.ModelSerializer):
-    """Serializer cho cập nhật thông tin nguyên liệu (chỉ name và unit)"""
+    """Serializer cho cập nhật thông tin nguyên liệu (name, unit, min_quantity)"""
     name = serializers.CharField(max_length=200, help_text="Tên nguyên liệu")
     unit = serializers.ChoiceField(
         choices=Ingredient.UNIT_CHOICES, 
         help_text="Đơn vị tính"
     )
+    min_quantity = serializers.DecimalField(
+        max_digits=12, 
+        decimal_places=3, 
+        min_value=0,
+        required=False,
+        help_text="Ngưỡng tối thiểu để cảnh báo sắp hết hàng"
+    )
     
     class Meta:
         model = Ingredient
-        fields = ['name', 'unit']
+        fields = ['name', 'unit', 'min_quantity']
         
     def validate_name(self, value):
         if not value or not value.strip():
@@ -54,6 +61,7 @@ class IngredientUpdateSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         instance.name = validated_data.get('name', instance.name)
         instance.unit = validated_data.get('unit', instance.unit)
+        instance.min_quantity = validated_data.get('min_quantity', instance.min_quantity)
         instance.save()
         return instance
 
