@@ -110,7 +110,7 @@ class StockInListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
-        queryset = StockIn.objects.select_related('ingredient', 'user').order_by('id')
+        queryset = StockIn.objects.select_related('ingredient', 'user').order_by('-id')
         
         # Filter by ingredient name
         ingredient_name = self.request.query_params.get('ingredient_name')
@@ -248,7 +248,7 @@ class StockOutListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
-        queryset = StockOut.objects.select_related('ingredient', 'user').order_by('id')
+        queryset = StockOut.objects.select_related('ingredient', 'user').order_by('-id')
         
         # Filter by ingredient name
         ingredient_name = self.request.query_params.get('ingredient_name')
