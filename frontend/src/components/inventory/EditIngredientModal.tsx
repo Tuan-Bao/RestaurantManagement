@@ -19,6 +19,7 @@ const EditIngredientModal: React.FC<EditIngredientModalProps> = ({
   const [formData, setFormData] = useState<IngredientUpdateData>({
     name: '',
     unit: 'kg',
+    min_quantity: 0,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,6 +30,7 @@ const EditIngredientModal: React.FC<EditIngredientModalProps> = ({
       setFormData({
         name: ingredient.name,
         unit: ingredient.unit,
+        min_quantity: ingredient.min_quantity,
       });
     }
   }, [ingredient]);
@@ -56,12 +58,20 @@ const EditIngredientModal: React.FC<EditIngredientModalProps> = ({
   };
 
   const handleInputChange = (field: keyof IngredientUpdateData, value: string) => {
-    setFormData({ ...formData, [field]: value });
+    if (field === 'min_quantity') {
+      setFormData({ ...formData, [field]: parseFloat(value) || 0 });
+    } else {
+      setFormData({ ...formData, [field]: value });
+    }
   };
 
   const isDataChanged = () => {
     if (!ingredient) return false;
-    return formData.name !== ingredient.name || formData.unit !== ingredient.unit;
+    return (
+      formData.name !== ingredient.name || 
+      formData.unit !== ingredient.unit ||
+      formData.min_quantity !== ingredient.min_quantity
+    );
   };
 
   if (!isOpen || !ingredient) return null;
@@ -165,6 +175,26 @@ const EditIngredientModal: React.FC<EditIngredientModalProps> = ({
                 </select>
               </div>
 
+              {/* Min Quantity */}
+              <div className="mb-3">
+                <label className="form-label">
+                  <i className="bi bi-exclamation-triangle me-1 text-warning"></i>
+                  Ngưỡng tối thiểu
+                </label>
+                <input
+                  type="number"
+                  className="form-control"
+                  min="0"
+                  step="0.001"
+                  value={formData.min_quantity || 0}
+                  onChange={(e) => handleInputChange('min_quantity', e.target.value)}
+                  placeholder="0.000"
+                />
+                <div className="form-text">
+                  Ngưỡng cảnh báo khi sắp hết hàng (đơn vị: {formData.unit})
+                </div>
+              </div>
+
               {/* Change Summary */}
               {isDataChanged() && (
                 <div className="alert alert-info">
@@ -174,6 +204,9 @@ const EditIngredientModal: React.FC<EditIngredientModalProps> = ({
                   )}
                   {formData.unit !== ingredient.unit && (
                     <div>• Đơn vị: "{ingredient.unit}" → "{formData.unit}"</div>
+                  )}
+                  {formData.min_quantity !== ingredient.min_quantity && (
+                    <div>• Ngưỡng tối thiểu: {ingredient.min_quantity} → {formData.min_quantity} {formData.unit}</div>
                   )}
                 </div>
               )}

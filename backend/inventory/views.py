@@ -104,10 +104,10 @@ class WarehouseUpdateView(generics.UpdateAPIView):
 
 class StockInListCreateView(generics.ListCreateAPIView):
     """
-    GET  /api/inventory/stock-in/ - Danh sách lịch sử nhập kho
+    GET  /api/inventory/stock-in/ - Danh sách lịch sử nhập kho (Admin only)
     POST /api/inventory/stock-in/ - Nhập kho mới (Admin only) - Tự động tạo/cập nhật nguyên liệu
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminUser]
     
     def get_queryset(self):
         queryset = StockIn.objects.select_related('ingredient', 'user').order_by('-id')
@@ -131,11 +131,6 @@ class StockInListCreateView(generics.ListCreateAPIView):
         if self.request.method == 'POST':
             return StockInCreateSerializer
         return StockInSerializer
-    
-    def get_permissions(self):
-        if self.request.method == 'POST':
-            return [IsAuthenticated(), IsAdminUser()]
-        return [IsAuthenticated()]
     
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
@@ -224,11 +219,11 @@ class StockInListCreateView(generics.ListCreateAPIView):
 
 class StockInDetailView(generics.RetrieveAPIView):
     """
-    GET /api/inventory/stock-in/{id}/ - Chi tiết phiếu nhập kho
+    GET /api/inventory/stock-in/{id}/ - Chi tiết phiếu nhập kho (Admin only)
     """
     queryset = StockIn.objects.select_related('ingredient', 'user')
     serializer_class = StockInSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminUser]
     
     def retrieve(self, request, *args, **kwargs):
         stock_in = self.get_object()
@@ -242,10 +237,10 @@ class StockInDetailView(generics.RetrieveAPIView):
 
 class StockOutListCreateView(generics.ListCreateAPIView):
     """
-    GET  /api/inventory/stock-out/ - Danh sách lịch sử xuất kho
+    GET  /api/inventory/stock-out/ - Danh sách lịch sử xuất kho (Admin only)
     POST /api/inventory/stock-out/ - Xuất kho thủ công (Admin only) - Tự động cập nhật tồn kho
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminUser]
     
     def get_queryset(self):
         queryset = StockOut.objects.select_related('ingredient', 'user').order_by('-id')
@@ -269,11 +264,6 @@ class StockOutListCreateView(generics.ListCreateAPIView):
         if self.request.method == 'POST':
             return StockOutCreateSerializer
         return StockOutSerializer
-    
-    def get_permissions(self):
-        if self.request.method == 'POST':
-            return [IsAuthenticated(), IsAdminUser()]
-        return [IsAuthenticated()]
     
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
@@ -355,11 +345,11 @@ class StockOutListCreateView(generics.ListCreateAPIView):
 
 class StockOutDetailView(generics.RetrieveAPIView):
     """
-    GET /api/inventory/stock-out/{id}/ - Chi tiết phiếu xuất kho
+    GET /api/inventory/stock-out/{id}/ - Chi tiết phiếu xuất kho (Admin only)
     """
     queryset = StockOut.objects.select_related('ingredient', 'user')
     serializer_class = StockOutSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminUser]
     
     def retrieve(self, request, *args, **kwargs):
         stock_out = self.get_object()
