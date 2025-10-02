@@ -64,12 +64,12 @@ export const ordersApiService = {
         return response;
     },
 
-    // Xóa món ăn
-    deleteOrderItem: async (itemId: number) => {
-        const response = await api.delete<{
+    // Hủy món ăn
+    cancelOrderItem: async (itemId: number) => {
+        const response = await api.patch<{
             success: boolean;
             message?: string;
-        }>(`/orders/items/${itemId}/`);
+        }>(`/orders/items/${itemId}/status/`, { status: 'cancelled' });
 
         return response;
     },
