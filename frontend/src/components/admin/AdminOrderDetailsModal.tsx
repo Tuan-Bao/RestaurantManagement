@@ -6,12 +6,14 @@ interface AdminOrderDetailsModalProps {
     order: Order;
     show: boolean;
     onClose: () => void;
+    onItemStatusChange?: (itemId: number, status: 'ordered' | 'cooking' | 'done' | 'cancelled') => void;
 }
 
 const AdminOrderDetailsModal: React.FC<AdminOrderDetailsModalProps> = ({
     order,
     show,
     onClose,
+    onItemStatusChange,
 }) => {
     if (!show) return null;
 
@@ -185,10 +187,24 @@ const AdminOrderDetailsModal: React.FC<AdminOrderDetailsModalProps> = ({
                                                             {item.totalPrice.toLocaleString("vi-VN")}đ
                                                         </td>
                                                         <td className="text-center">
-                                                            <span className={`badge bg-${statusInfo.color}`}>
-                                                                <i className={`${statusInfo.icon} me-1`}></i>
-                                                                {statusInfo.text}
-                                                            </span>
+                                                            {onItemStatusChange && order.status === 'active' ? (
+                                                                <select
+                                                                    className="form-select form-select-sm"
+                                                                    value={backendStatus}
+                                                                    onChange={(e) => onItemStatusChange(item.id, e.target.value as 'ordered' | 'cooking' | 'done' | 'cancelled')}
+                                                                    style={{ minWidth: '120px' }}
+                                                                >
+                                                                    <option value="ordered">Chờ xử lý</option>
+                                                                    <option value="cooking">Đang nấu</option>
+                                                                    <option value="done">Hoàn thành</option>
+                                                                    <option value="cancelled">Đã hủy</option>
+                                                                </select>
+                                                            ) : (
+                                                                <span className={`badge bg-${statusInfo.color}`}>
+                                                                    <i className={`${statusInfo.icon} me-1`}></i>
+                                                                    {statusInfo.text}
+                                                                </span>
+                                                            )}
                                                         </td>
                                                     </tr>
                                                 );
@@ -211,12 +227,6 @@ const AdminOrderDetailsModal: React.FC<AdminOrderDetailsModalProps> = ({
                             <i className="bi bi-printer me-1"></i>
                             In hóa đơn
                         </button>
-                        {order.status === "active" && (
-                            <button className="btn btn-outline-danger">
-                                <i className="bi bi-x-circle me-1"></i>
-                                Hủy đơn hàng
-                            </button>
-                        )}
                         <button className="btn btn-secondary" onClick={onClose}>
                             Đóng
                         </button>
