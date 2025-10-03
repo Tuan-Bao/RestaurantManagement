@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { menuApi } from '../../services/menu';
 import { ordersApi } from '../../services/orders';
 import type { MenuItem, Category, Order, OrderItem } from '../../types/restaurant';
+// @ts-ignore
 import { useNotification } from '../../contexts/NotificationContext';
 
 interface CartItem {
@@ -39,6 +40,11 @@ const MenuSelection: React.FC<MenuSelectionProps> = ({
   const [itemNote, setItemNote] = useState('');
   const [itemQuantity, setItemQuantity] = useState(1);
   const [existingOrder, setExistingOrder] = useState<Order | null>(null);
+
+  // Format price helper function
+  const formatPrice = (price: number): string => {
+    return new Intl.NumberFormat('vi-VN').format(Math.round(price)) + 'đ';
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -91,7 +97,7 @@ const MenuSelection: React.FC<MenuSelectionProps> = ({
     let filtered = menuItems.filter(item => item.status === 'available');
 
     if (selectedCategory !== 'all') {
-      filtered = filtered.filter(item => item.category_id === selectedCategory);
+      filtered = filtered.filter(item => item.category === selectedCategory);
     }
 
     if (searchTerm) {
@@ -231,7 +237,7 @@ const MenuSelection: React.FC<MenuSelectionProps> = ({
         const existingOrderedItems = existingOrder.order_items
           ?.filter(item => item.status === 'ordered')
           .map(item => ({
-            menu_item: item.menu_item_id,
+            menu_item: item.menu_item,
             quantity: item.quantity,
             note: item.note || ''
           })) || [];
@@ -270,9 +276,9 @@ const MenuSelection: React.FC<MenuSelectionProps> = ({
   return (
     <>
       <div className="modal show d-block" tabIndex={-1}>
-        <div className="modal-dialog modal-fullscreen">
-          <div className="modal-content">
-            <div className="modal-header">
+        <div className="modal-dialog" style={{ maxWidth: '1200px', width: '95vw' }}>
+          <div className="modal-content" style={{ height: '85vh', minHeight: '600px' }}>
+            <div className="modal-header border-bottom flex-shrink-0">
               <h5 className="modal-title">
                 <i className="bi bi-cart-plus me-2"></i>
                 Đặt món - {tableName}
@@ -290,13 +296,13 @@ const MenuSelection: React.FC<MenuSelectionProps> = ({
               ></button>
             </div>
 
-            <div className="modal-body p-0">
+            <div className="modal-body p-0 d-flex flex-column flex-grow-1" style={{ overflow: 'hidden' }}>
               {!showCart ? (
                 <>
                   {/* Search and Categories */}
-                  <div className="bg-light p-3 border-bottom">
+                  <div className="bg-light p-3 border-bottom sticky-top">
                     <div className="row g-3">
-                      <div className="col-md-6">
+                      <div className="col-12">
                         <div className="input-group">
                           <span className="input-group-text">
                             <i className="bi bi-search"></i>
@@ -310,27 +316,33 @@ const MenuSelection: React.FC<MenuSelectionProps> = ({
                           />
                         </div>
                       </div>
-                      <div className="col-md-6">
-                        <select
-                          className="form-select"
-                          value={selectedCategory}
-                          onChange={(e) => setSelectedCategory(
-                            e.target.value === 'all' ? 'all' : Number(e.target.value)
-                          )}
+                    </div>
+                    
+                    {/* Category Tabs */}
+                    <div className="mt-3">
+                      <div className="d-flex flex-wrap gap-2">
+                        <button
+                          className={`btn btn-sm ${selectedCategory === 'all' ? 'btn-primary' : 'btn-outline-primary'}`}
+                          onClick={() => setSelectedCategory('all')}
                         >
-                          <option value="all">Tất cả danh mục</option>
-                          {categories.map(category => (
-                            <option key={category.id} value={category.id}>
-                              {category.name}
-                            </option>
-                          ))}
-                        </select>
+                          <i className="bi bi-grid-3x3-gap me-1"></i>
+                          Tất cả
+                        </button>
+                        {categories.map(category => (
+                          <button
+                            key={category.id}
+                            className={`btn btn-sm ${selectedCategory === category.id ? 'btn-primary' : 'btn-outline-primary'}`}
+                            onClick={() => setSelectedCategory(category.id)}
+                          >
+                            {category.name}
+                          </button>
+                        ))}
                       </div>
                     </div>
                   </div>
 
                   {/* Menu Items */}
-                  <div className="p-3" style={{ paddingBottom: '100px' }}>
+                  <div className="flex-grow-1 p-3" style={{ overflowY: 'auto', paddingBottom: '80px' }}>
                     {loading ? (
                       <div className="text-center py-5">
                         <div className="spinner-border text-primary" role="status">
@@ -350,53 +362,135 @@ const MenuSelection: React.FC<MenuSelectionProps> = ({
                           const totalQuantity = quantityInCart + existingQuantity;
                           
                           return (
-                            <div key={item.id} className="col-lg-3 col-md-4 col-sm-6">
-                              <div className="card h-100">
-                                <div className="position-relative">
-                                  <img
-                                    src={item.image_url || '/images/default-food.jpg'}
-                                    className="card-img-top"
-                                    alt={item.name}
-                                    style={{ height: '200px', objectFit: 'cover' }}
-                                  />
-                                  <div className="position-absolute top-0 end-0 p-2">
-                                    <div className="btn-group-vertical">
-                                      <button
-                                        className="btn btn-sm btn-success"
-                                        onClick={() => addToCart(item, 1)}
-                                      >
-                                        <i className="bi bi-plus"></i>
-                                      </button>
-                                    </div>
+                            <div key={item.id} className="col-lg-6 col-md-12 col-sm-12 mb-3">
+                              <div className="card shadow-sm border-0" style={{ height: '200px' }}>
+                                <div className="row g-0 h-100">
+                                  {/* Image Column */}
+                                  <div className="col-4 position-relative">
+                                    <img
+                                      src={item.image_url || '/images/default-food.jpg'}
+                                      className="img-fluid h-100 w-100"
+                                      alt={item.name}
+                                      style={{ objectFit: 'cover', borderRadius: '0.375rem 0 0 0.375rem' }}
+                                      onError={(e) => {
+                                        (e.target as HTMLImageElement).src = "https://via.placeholder.com/200x180?text=No+Image";
+                                      }}
+                                    />
+                                    {totalQuantity > 0 && (
+                                      <div className="position-absolute top-0 start-0 p-2">
+                                        <span className="badge bg-primary fs-6 shadow">
+                                          {totalQuantity}
+                                        </span>
+                                        {existingQuantity > 0 && quantityInCart > 0 && (
+                                          <div className="small text-white mt-1 bg-dark bg-opacity-75 rounded px-1">
+                                            <small>Có: {existingQuantity} + Mới: {quantityInCart}</small>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
                                   </div>
-                                  {totalQuantity > 0 && (
-                                    <div className="position-absolute top-0 start-0 p-2">
-                                      <span className="badge bg-primary fs-6">
-                                        {totalQuantity}
-                                      </span>
-                                      {existingQuantity > 0 && quantityInCart > 0 && (
-                                        <div className="small text-white mt-1">
-                                          <small>Có: {existingQuantity} + Mới: {quantityInCart}</small>
+                                  
+                                  {/* Content Column */}
+                                  <div className="col-8">
+                                    <div className="card-body d-flex flex-column h-100 p-3">
+                                      {/* Title Section - Fixed Height */}
+                                      <div style={{ height: '80px', overflow: 'hidden' }}>
+                                        <h6 className="card-title fw-bold mb-2" 
+                                            style={{ 
+                                              fontSize: '1.1rem',
+                                              lineHeight: '1.3',
+                                              height: '2.6rem',
+                                              display: '-webkit-box',
+                                              WebkitLineClamp: 2,
+                                              WebkitBoxOrient: 'vertical',
+                                              overflow: 'hidden'
+                                            }} 
+                                            title={item.name}>
+                                          {item.name}
+                                        </h6>
+                                        <p className="card-text text-muted small mb-0" 
+                                           style={{ 
+                                             display: '-webkit-box',
+                                             WebkitLineClamp: 2,
+                                             WebkitBoxOrient: 'vertical',
+                                             overflow: 'hidden',
+                                             lineHeight: '1.3',
+                                             height: '2.6rem',
+                                             fontSize: '0.85rem'
+                                           }}
+                                           title={item.description || 'Không có mô tả'}>
+                                          {item.description || 'Không có mô tả'}
+                                        </p>
+                                      </div>
+                                      
+                                      {/* Price Section - Fixed Height */}
+                                      <div className="mt-auto" style={{ height: '80px' }}>
+                                        <div className="text-center mb-3">
+                                          <span className="fw-bold text-primary" style={{ fontSize: '1.3rem' }}>
+                                            {formatPrice(item.price)}
+                                          </span>
                                         </div>
-                                      )}
+                                        
+                                        {/* Actions Row - Fixed Height */}
+                                        <div className="d-flex justify-content-center gap-2">
+                                          {/* Quantity Control */}
+                                          {quantityInCart > 0 ? (
+                                            <>
+                                              <div className="btn-group btn-group-sm" role="group">
+                                                <button
+                                                  className="btn btn-outline-warning"
+                                                  onClick={() => {
+                                                    if (quantityInCart === 1) {
+                                                      removeFromCart(item.id);
+                                                    } else {
+                                                      updateCartItem(item.id, quantityInCart - 1);
+                                                    }
+                                                  }}
+                                                  title="Giảm số lượng"
+                                                >
+                                                  <i className="bi bi-dash"></i>
+                                                </button>
+                                                <span className="btn btn-outline-secondary disabled" style={{ minWidth: '40px' }}>
+                                                  {quantityInCart}
+                                                </span>
+                                                <button
+                                                  className="btn btn-outline-success"
+                                                  onClick={() => addToCart(item, 1)}
+                                                  title="Tăng số lượng"
+                                                >
+                                                  <i className="bi bi-plus"></i>
+                                                </button>
+                                              </div>
+                                              <button
+                                                className="btn btn-outline-primary btn-sm"
+                                                onClick={() => handleItemClick(item)}
+                                                title="Xem chi tiết"
+                                              >
+                                                <i className="bi bi-info-circle"></i>
+                                              </button>
+                                            </>
+                                          ) : (
+                                            <>
+                                              <button
+                                                className="btn btn-success btn-sm"
+                                                onClick={() => addToCart(item, 1)}
+                                                title="Thêm vào giỏ"
+                                              >
+                                                <i className="bi bi-plus-circle me-1"></i>
+                                                Thêm
+                                              </button>
+                                              <button
+                                                className="btn btn-outline-primary btn-sm"
+                                                onClick={() => handleItemClick(item)}
+                                                title="Xem chi tiết"
+                                              >
+                                                <i className="bi bi-info-circle"></i>
+                                              </button>
+                                            </>
+                                          )}
+                                        </div>
+                                      </div>
                                     </div>
-                                  )}
-                                </div>
-                                <div className="card-body">
-                                  <h6 className="card-title">{item.name}</h6>
-                                  <p className="card-text small text-muted">
-                                    {item.description}
-                                  </p>
-                                  <div className="d-flex justify-content-between align-items-center">
-                                    <span className="fw-bold text-primary">
-                                      {item.price.toLocaleString('vi-VN')}đ
-                                    </span>
-                                    <button
-                                      className="btn btn-outline-primary btn-sm"
-                                      onClick={() => handleItemClick(item)}
-                                    >
-                                      Chọn món
-                                    </button>
                                   </div>
                                 </div>
                               </div>
@@ -408,11 +502,28 @@ const MenuSelection: React.FC<MenuSelectionProps> = ({
 
                     {filteredItems.length === 0 && !loading && !error && (
                       <div className="text-center py-5">
-                        <i className="bi bi-search fs-1 text-muted mb-3"></i>
-                        <h5 className="text-muted">Không tìm thấy món ăn nào</h5>
-                        <p className="text-muted">
-                          Thử thay đổi từ khóa tìm kiếm hoặc danh mục
+                        <div className="mb-4">
+                          <i className="bi bi-search fs-1 text-muted"></i>
+                        </div>
+                        <h5 className="text-muted mb-2">Không tìm thấy món ăn nào</h5>
+                        <p className="text-muted mb-3">
+                          {searchTerm || selectedCategory !== 'all' 
+                            ? 'Thử thay đổi từ khóa tìm kiếm hoặc danh mục'
+                            : 'Hiện tại chưa có món ăn nào trong menu'
+                          }
                         </p>
+                        {(searchTerm || selectedCategory !== 'all') && (
+                          <button 
+                            className="btn btn-outline-primary btn-sm"
+                            onClick={() => {
+                              setSearchTerm('');
+                              setSelectedCategory('all');
+                            }}
+                          >
+                            <i className="bi bi-arrow-clockwise me-1"></i>
+                            Xóa bộ lọc
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -473,10 +584,13 @@ const MenuSelection: React.FC<MenuSelectionProps> = ({
                                   <div className="btn-group btn-group-sm">
                                     <button
                                       className="btn btn-outline-secondary"
-                                      onClick={() => updateCartItem(
-                                        item.menuItem.id,
-                                        Math.max(1, item.quantity - 1)
-                                      )}
+                                      onClick={() => {
+                                        if (item.quantity === 1) {
+                                          removeFromCart(item.menuItem.id);
+                                        } else {
+                                          updateCartItem(item.menuItem.id, item.quantity - 1);
+                                        }
+                                      }}
                                     >
                                       <i className="bi bi-dash"></i>
                                     </button>
@@ -495,11 +609,11 @@ const MenuSelection: React.FC<MenuSelectionProps> = ({
                                   </div>
                                 </td>
                                 <td className="text-end">
-                                  {item.menuItem.price.toLocaleString('vi-VN')}đ
+                                  {formatPrice(item.menuItem.price)}
                                 </td>
                                 <td className="text-end">
                                   <strong>
-                                    {(item.menuItem.price * item.quantity).toLocaleString('vi-VN')}đ
+                                    {formatPrice(item.menuItem.price * item.quantity)}
                                   </strong>
                                 </td>
                                 <td className="text-center">
@@ -518,7 +632,7 @@ const MenuSelection: React.FC<MenuSelectionProps> = ({
                               <td colSpan={3}><strong>Tổng cộng:</strong></td>
                               <td className="text-end">
                                 <strong className="fs-5 text-primary">
-                                  {getTotalAmount().toLocaleString('vi-VN')}đ
+                                  {formatPrice(getTotalAmount())}
                                 </strong>
                               </td>
                               <td></td>
@@ -571,7 +685,7 @@ const MenuSelection: React.FC<MenuSelectionProps> = ({
                       Giỏ hàng: {getTotalQuantity()} món
                     </div>
                     <div className="fw-bold">
-                      {getTotalAmount().toLocaleString('vi-VN')}đ
+                      {formatPrice(getTotalAmount())}
                     </div>
                   </div>
                 </div>
@@ -605,7 +719,7 @@ const MenuSelection: React.FC<MenuSelectionProps> = ({
                   <h5>{selectedItem.name}</h5>
                   <p className="text-muted">{selectedItem.description}</p>
                   <div className="fs-4 fw-bold text-primary">
-                    {selectedItem.price.toLocaleString('vi-VN')}đ
+                    {formatPrice(selectedItem.price)}
                   </div>
                   
                   {/* Hiển thị thông tin món đã có trong order */}
@@ -665,7 +779,7 @@ const MenuSelection: React.FC<MenuSelectionProps> = ({
                   onClick={handleAddItemWithNote}
                 >
                   <i className="bi bi-cart-plus me-1"></i>
-                  Thêm vào giỏ ({itemQuantity} x {selectedItem.price.toLocaleString('vi-VN')}đ)
+                  Thêm vào giỏ ({itemQuantity} x {formatPrice(selectedItem.price)})
                 </button>
               </div>
             </div>
