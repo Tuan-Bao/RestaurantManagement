@@ -14,6 +14,7 @@ import StaffDashboard from "../pages/staff/StaffDashboard";
 import StaffTables from "../pages/staff/StaffTables";
 import StaffOrders from "../pages/staff/StaffOrders";
 import StaffMenu from "../pages/staff/StaffMenu";
+import StaffInventory from "../pages/staff/StaffInventory";
 import ProtectedRoute from "./ProtectedRoute";
 import "../layouts/Layout.css";
 // App
@@ -132,6 +133,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute requiredRole="staff">
             <StaffMenu />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/staff/inventory"
+        element={
+          <ProtectedRoute requiredRole="staff">
+            <StaffInventory />
           </ProtectedRoute>
         }
       />
