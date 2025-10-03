@@ -30,15 +30,19 @@ const AccountsManagement: React.FC = () => {
   });
 
   // Load users
-  const loadUsers = async () => {
+  const loadUsers = async (showLoadingSpinner: boolean = true) => {
     try {
-      setLoading(true);
+      if (showLoadingSpinner) {
+        setLoading(true);
+      }
       const response = await userService.getUsers();
       setUsers(response.data);
     } catch (err: any) {
       setError("Không thể tải danh sách tài khoản");
     } finally {
-      setLoading(false);
+      if (showLoadingSpinner) {
+        setLoading(false);
+      }
     }
   };
 
@@ -68,7 +72,8 @@ const AccountsManagement: React.FC = () => {
         await userService.updateUser(selectedUser.id, updateData);
       }
       
-      await loadUsers();
+      // Refresh data without showing loading spinner
+      await loadUsers(false);
       resetForm();
       setShowCreateModal(false);
       setShowEditModal(false);
@@ -86,7 +91,8 @@ const AccountsManagement: React.FC = () => {
     setActionLoading(true);
     try {
       await userService.deleteUser(selectedUser.id);
-      await loadUsers();
+      // Refresh data without showing loading spinner
+      await loadUsers(false);
       setShowConfirmDelete(false);
       setSelectedUser(null);
     } catch (err: any) {
@@ -139,19 +145,19 @@ const AccountsManagement: React.FC = () => {
     setShowConfirmDelete(true);
   };
 
-  if (loading) {
-    return <Loading />;
-  }
-
   return (
     <AdminLayout>
-      <div className="row">
-        <div className="col-12">
-          <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4">
-            <h2 className="mb-2 mb-md-0">
-              <i className="bi bi-people me-2"></i>
-              Quản lý tài khoản
-            </h2>
+      {loading ? (
+        <Loading />
+      ) : (
+        <>
+          <div className="row">
+            <div className="col-12">
+              <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4">
+                <h2 className="mb-2 mb-md-0">
+                  <i className="bi bi-people me-2"></i>
+                  Quản lý tài khoản
+                </h2>
             <button
               className="btn btn-primary"
               onClick={openCreateModal}
@@ -528,6 +534,8 @@ const AccountsManagement: React.FC = () => {
         }}
         type="danger"
       />
+        </>
+      )}
     </AdminLayout>
   );
 };
