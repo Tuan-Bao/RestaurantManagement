@@ -95,8 +95,17 @@ export const menuApi = {
   },
 
   // Recipe Management
+  getRecipes: (menuId: number) => {
+    return api.get<{
+      success: boolean;
+      data: Recipe[];
+      total: number;
+      message?: string;
+    }>(`/menu/items/${menuId}/recipes/`);
+  },
+
   addIngredients: (menuId: number, data: {
-    ingredient_id: number;
+    ingredient: number;
     quantity_required: number;
   }[]) => {
     return api.post<{

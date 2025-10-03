@@ -122,7 +122,7 @@ class CategoryDetailView(generics.RetrieveUpdateDestroyAPIView):
         return Response({
             'success': True,
             'message': 'Deleted category successfully'
-        }, status=status.HTTP_204_NO_CONTENT)
+        }, status=status.HTTP_200_OK)
 
 # ===== MENUITEM VIEWS =====
 class MenuItemListCreateView(generics.ListCreateAPIView):
@@ -237,7 +237,7 @@ class MenuItemDetailView(generics.RetrieveUpdateDestroyAPIView):
         return Response({
             'success': True,
             'message': 'Deleted menu item successfully'
-        }, status=status.HTTP_204_NO_CONTENT)
+        }, status=status.HTTP_200_OK)
 
 @api_view(['PATCH'])
 @permission_classes([IsAuthenticated])  # Staff + Admin có thể thay đổi status
@@ -388,7 +388,7 @@ class RecipeDetailView(generics.RetrieveUpdateDestroyAPIView):
         return Response({
             'success': True,
             'message': 'Removed ingredient from recipe successfully'
-        }, status=status.HTTP_204_NO_CONTENT)
+        }, status=status.HTTP_200_OK)
 
 class RecipeBulkUpdateView(APIView):
     """

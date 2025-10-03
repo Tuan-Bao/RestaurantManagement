@@ -5,7 +5,7 @@ export interface OrderItem {
   quantity: number;
   unitPrice: number;
   totalPrice: number;
-  status: "pending" | "preparing" | "ready" | "served";
+  status: "pending" | "preparing" | "ready" | "served" | "cancelled";
   specialInstructions?: string;
   estimatedTime?: number; // minutes
 }

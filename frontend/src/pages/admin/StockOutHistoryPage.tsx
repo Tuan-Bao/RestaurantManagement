@@ -75,10 +75,8 @@ const StockOutHistoryPage: React.FC = () => {
     setShowDetailModal(false);
   };
 
-  const getReasonBadge = (reason: string, orderItem?: any) => {
-    const isAutomatic = reason === 'cooking' && orderItem;
-    
-    if (isAutomatic) {
+  const getReasonBadge = (reason: string, _orderItem?: any) => {
+    if (reason === 'cooking') {
       return (
         <span className="badge bg-warning">
           <i className="bi bi-gear me-1"></i>
@@ -102,18 +100,18 @@ const StockOutHistoryPage: React.FC = () => {
             Hỏng hóc
           </span>
         );
-      case 'manual':
-        return (
-          <span className="badge bg-primary">
-            <i className="bi bi-hand-index me-1"></i>
-            Thủ công
-          </span>
-        );
-      default:
+      case 'other':
         return (
           <span className="badge bg-info">
             <i className="bi bi-question-circle me-1"></i>
             Khác
+          </span>
+        );
+      default:
+        return (
+          <span className="badge bg-secondary">
+            <i className="bi bi-question-circle me-1"></i>
+            Không xác định
           </span>
         );
     }
@@ -281,7 +279,7 @@ const StockOutHistoryPage: React.FC = () => {
                   <option value="cooking">Nấu ăn (Tự động)</option>
                   <option value="expired">Hết hạn</option>
                   <option value="damaged">Hỏng hóc</option>
-                  <option value="manual">Thủ công</option>
+                  <option value="other">Khác</option>
                 </select>
               </div>
             </div>

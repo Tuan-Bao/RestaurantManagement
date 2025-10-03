@@ -25,10 +25,8 @@ const StockOutDetailModal: React.FC<StockOutDetailModalProps> = ({
     });
   };
 
-  const getReasonInfo = (reason: string, orderItem?: any) => {
-    const isAutomatic = reason === 'cooking' && orderItem;
-    
-    if (isAutomatic) {
+  const getReasonInfo = (reason: string, _orderItem?: any) => {
+    if (reason === 'cooking') {
       return {
         label: 'Tự động (Nấu ăn)',
         icon: 'bi-gear',
@@ -52,19 +50,19 @@ const StockOutDetailModal: React.FC<StockOutDetailModalProps> = ({
           color: 'secondary',
           description: 'Nguyên liệu bị hư hỏng, không thể sử dụng'
         };
-      case 'manual':
-        return {
-          label: 'Thủ công',
-          icon: 'bi-hand-index',
-          color: 'primary',
-          description: 'Xuất kho thủ công bởi người dùng'
-        };
-      default:
+      case 'other':
         return {
           label: 'Khác',
           icon: 'bi-question-circle',
           color: 'info',
           description: 'Lý do khác'
+        };
+      default:
+        return {
+          label: 'Không xác định',
+          icon: 'bi-question-circle',
+          color: 'secondary',
+          description: 'Lý do không xác định'
         };
     }
   };
