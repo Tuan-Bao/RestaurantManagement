@@ -13,7 +13,12 @@ const WarehousePage: React.FC = () => {
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [summary, setSummary] = useState({ total_ingredients: 0, low_stock_items: 0 });
+  const [summary, setSummary] = useState({ 
+    total_ingredients: 0, 
+    low_stock_items: 0,
+    out_of_stock_items: 0,
+    in_stock_items: 0 
+  });
   
   // Filters
   const [filters, setFilters] = useState<WarehouseFilters>({});
@@ -32,7 +37,17 @@ const WarehousePage: React.FC = () => {
       setError(null);
       const response = await inventoryApi.getWarehouse(filters);
       setIngredients(response.data);
-      setSummary(response.summary);
+      
+      // Tính toán thống kê
+      const outOfStockItems = response.data.filter(item => item.stock_quantity === 0).length;
+      const inStockItems = response.data.filter(item => item.stock_quantity > 0).length;
+      
+      setSummary({
+        total_ingredients: response.summary.total_ingredients,
+        low_stock_items: response.summary.low_stock_items,
+        out_of_stock_items: outOfStockItems,
+        in_stock_items: inStockItems
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Lỗi khi tải dữ liệu kho');
     } finally {
@@ -188,7 +203,23 @@ const WarehousePage: React.FC = () => {
         </div>
 
         <div className="col-md-3">
-          <div className="card bg-danger text-white">
+          <div className="card bg-success text-white">
+            <div className="card-body">
+              <div className="d-flex justify-content-between">
+                <div>
+                  <h6 className="card-title">Còn hàng</h6>
+                  <h3 className="mb-0">{summary.in_stock_items}</h3>
+                </div>
+                <div className="fs-1 opacity-75">
+                  <i className="bi bi-check-circle"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="col-md-3">
+          <div className="card bg-warning text-dark">
             <div className="card-body">
               <div className="d-flex justify-content-between">
                 <div>
@@ -204,32 +235,12 @@ const WarehousePage: React.FC = () => {
         </div>
 
         <div className="col-md-3">
-          <div className="card bg-success text-white">
-            <div className="card-body">
-              <div className="d-flex justify-content-between">
-                <div>
-                  <h6 className="card-title">Còn hàng</h6>
-                  <h3 className="mb-0">
-                    {ingredients.filter(i => i.status === 'active' && !i.is_low_stock).length}
-                  </h3>
-                </div>
-                <div className="fs-1 opacity-75">
-                  <i className="bi bi-check-circle"></i>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="col-md-3">
-          <div className="card bg-secondary text-white">
+          <div className="card bg-danger text-white">
             <div className="card-body">
               <div className="d-flex justify-content-between">
                 <div>
                   <h6 className="card-title">Hết hàng</h6>
-                  <h3 className="mb-0">
-                    {ingredients.filter(i => i.status === 'inactive').length}
-                  </h3>
+                  <h3 className="mb-0">{summary.out_of_stock_items}</h3>
                 </div>
                 <div className="fs-1 opacity-75">
                   <i className="bi bi-x-circle"></i>
@@ -291,28 +302,33 @@ const WarehousePage: React.FC = () => {
           {/* Filter Panel */}
           {showFilters && (
             <div className="row g-3 mt-3 pt-3 border-top">
-              <div className="col-md-4">
-                <label className="form-label">Trạng thái</label>
+              <div className="col-md-6">
+                <label className="form-label">Trạng thái kho</label>
                 <select
                   className="form-select"
-                  value={filters.status || ''}
-                  onChange={(e) => handleFilterChange('status', e.target.value || undefined)}
+                  value={filters.status === 'active' && filters.low_stock === true ? 'low_stock' : 
+                         filters.status === 'inactive' ? 'out_of_stock' :
+                         filters.status === 'active' ? 'in_stock' : ''}
+                  onChange={(e) => {
+                    if (e.target.value === 'in_stock') {
+                      handleFilterChange('status', 'active');
+                      handleFilterChange('low_stock', false);
+                    } else if (e.target.value === 'low_stock') {
+                      handleFilterChange('status', 'active');
+                      handleFilterChange('low_stock', true);
+                    } else if (e.target.value === 'out_of_stock') {
+                      handleFilterChange('status', 'inactive');
+                      handleFilterChange('low_stock', undefined);
+                    } else {
+                      handleFilterChange('status', undefined);
+                      handleFilterChange('low_stock', undefined);
+                    }
+                  }}
                 >
                   <option value="">Tất cả</option>
-                  <option value="active">Còn hàng</option>
-                  <option value="inactive">Hết hàng</option>
-                </select>
-              </div>
-
-              <div className="col-md-4">
-                <label className="form-label">Tình trạng tồn kho</label>
-                <select
-                  className="form-select"
-                  value={filters.low_stock ? 'true' : ''}
-                  onChange={(e) => handleFilterChange('low_stock', e.target.value === 'true' || undefined)}
-                >
-                  <option value="">Tất cả</option>
-                  <option value="true">Sắp hết hàng</option>
+                  <option value="in_stock">Còn hàng</option>
+                  <option value="low_stock">Sắp hết hàng</option>
+                  <option value="out_of_stock">Hết hàng</option>
                 </select>
               </div>
             </div>
