@@ -28,7 +28,7 @@ export const ordersApi = {
   },
 
   // Cập nhật trạng thái món ăn 
-  updateOrderItemStatus: (itemId: number, status: 'ordered' | 'cooking' | 'done' | 'cancel') => {
+  updateOrderItemStatus: (itemId: number, status: 'ordered' | 'cooking' | 'done' | 'cancelled') => {
     return api.patch<{
       success: boolean;
       data: OrderItem;

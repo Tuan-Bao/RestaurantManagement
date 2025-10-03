@@ -3,6 +3,7 @@ import { ordersApi } from '../../services/orders';
 import ConfirmDialog from './ConfirmDialog';
 import type { Table, Order, OrderItem } from '../../types/restaurant';
 import { tablesApi } from '../../services/tables';
+// @ts-ignore
 import { useNotification } from '../../contexts/NotificationContext';
 
 interface TableOrderModalProps {

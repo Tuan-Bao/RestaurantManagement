@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import StaffLayout from "../../layouts/StaffLayout";
 import Loading from "../../components/shared/Loading";
 import { menuApi } from "../../services/menu";
-import type { Category, MenuItem } from "../../types/restaurant";
+import type { Category, MenuItem, Recipe } from "../../types/restaurant";
 
 const StaffMenu: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -21,6 +21,9 @@ const StaffMenu: React.FC = () => {
   // Modal states
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
+  const [showRecipeModal, setShowRecipeModal] = useState(false);
+  const [currentRecipes, setCurrentRecipes] = useState<Recipe[]>([]);
+  const [loadingRecipes, setLoadingRecipes] = useState(false);
 
   // Statistics
   const [stats, setStats] = useState({
@@ -86,7 +89,7 @@ const StaffMenu: React.FC = () => {
   const filterItems = () => {
     const filtered = menuItems.filter((item: MenuItem) => {
       const matchesName = !searchName || item.name?.toLowerCase().includes(searchName.toLowerCase());
-      const matchesCategory = !selectedCategory || item.category_id === Number(selectedCategory);
+      const matchesCategory = !selectedCategory || item.category === Number(selectedCategory);
       const matchesStatus = !selectedStatus || item.status === selectedStatus;
       return matchesName && matchesCategory && matchesStatus;
     });
@@ -97,6 +100,26 @@ const StaffMenu: React.FC = () => {
   const openDetailModal = (item: MenuItem) => {
     setSelectedItem(item);
     setShowDetailModal(true);
+  };
+
+  // Load recipes for menu item
+  const loadRecipeForItem = async (item: MenuItem) => {
+    try {
+      setLoadingRecipes(true);
+      setSelectedItem(item);
+      
+      const response = await menuApi.getRecipes(item.id);
+      if (response.data.success) {
+        setCurrentRecipes(response.data.data);
+        setShowRecipeModal(true);
+      } else {
+        console.error('Failed to load recipes:', response.data.message);
+      }
+    } catch (error) {
+      console.error('Error loading recipes:', error);
+    } finally {
+      setLoadingRecipes(false);
+    }
   };
 
   // Get category name
@@ -326,7 +349,7 @@ const StaffMenu: React.FC = () => {
                       
                       <p className="text-muted small mb-2">
                         <i className="bi bi-list me-1"></i>
-                        {getCategoryName(item.category_id)}
+                        {item.category_name || getCategoryName(item.category)}
                       </p>
                       
                       {item.description && (
@@ -341,16 +364,29 @@ const StaffMenu: React.FC = () => {
                         <div className="h5 text-primary mb-0">
                           {formatPrice(item.price || 0)}
                         </div>
-                        <button
-                          className="btn btn-outline-primary btn-sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openDetailModal(item);
-                          }}
-                        >
-                          <i className="bi bi-eye me-1"></i>
-                          Chi tiết
-                        </button>
+                        <div className="d-flex gap-2">
+                          <button
+                            className="btn btn-outline-success btn-sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              loadRecipeForItem(item);
+                            }}
+                            disabled={loadingRecipes}
+                          >
+                            <i className="bi bi-book me-1"></i>
+                            Công thức
+                          </button>
+                          <button
+                            className="btn btn-outline-primary btn-sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openDetailModal(item);
+                            }}
+                          >
+                            <i className="bi bi-eye me-1"></i>
+                            Chi tiết
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -401,7 +437,7 @@ const StaffMenu: React.FC = () => {
                           <strong>Danh mục:</strong>
                           <div className="mt-1">
                             <span className="badge bg-secondary">
-                              {getCategoryName(selectedItem.category_id)}
+                              {selectedItem.category_name || getCategoryName(selectedItem.category)}
                             </span>
                           </div>
                         </div>
@@ -451,6 +487,87 @@ const StaffMenu: React.FC = () => {
                       type="button"
                       className="btn btn-secondary"
                       onClick={() => setShowDetailModal(false)}
+                    >
+                      <i className="bi bi-x me-1"></i>
+                      Đóng
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div className="modal-backdrop show"></div>
+            </div>
+          )}
+
+          {/* Recipe Modal */}
+          {showRecipeModal && selectedItem && (
+            <div className="modal show d-block" tabIndex={-1}>
+              <div className="modal-dialog modal-lg">
+                <div className="modal-content">
+                  <div className="modal-header">
+                    <h5 className="modal-title">
+                      <i className="bi bi-book me-2"></i>
+                      Công thức - {selectedItem.name}
+                    </h5>
+                    <button
+                      type="button"
+                      className="btn-close"
+                      onClick={() => setShowRecipeModal(false)}
+                    ></button>
+                  </div>
+                  <div className="modal-body">
+                    {loadingRecipes ? (
+                      <div className="text-center py-4">
+                        <div className="spinner-border text-primary" role="status">
+                          <span className="visually-hidden">Đang tải...</span>
+                        </div>
+                        <p className="mt-2 text-muted">Đang tải công thức...</p>
+                      </div>
+                    ) : currentRecipes.length > 0 ? (
+                      <div className="table-responsive">
+                        <table className="table table-hover">
+                          <thead className="table-light">
+                            <tr>
+                              <th scope="col">#</th>
+                              <th scope="col">Nguyên liệu</th>
+                              <th scope="col">Số lượng cần thiết</th>
+                              <th scope="col">Đơn vị</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {currentRecipes.map((recipe, index) => (
+                              <tr key={recipe.id}>
+                                <td>{index + 1}</td>
+                                <td>
+                                  <strong>{recipe.ingredient_name}</strong>
+                                </td>
+                                <td>
+                                  <span className="badge bg-primary">
+                                    {recipe.quantity_required}
+                                  </span>
+                                </td>
+                                <td>
+                                  <span className="text-muted">
+                                    {recipe.ingredient_unit}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="text-center py-4">
+                        <i className="bi bi-exclamation-circle text-warning fs-1"></i>
+                        <h6 className="mt-3 text-muted">Chưa có công thức</h6>
+                        <p className="text-muted">Món ăn này chưa có công thức được thiết lập.</p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="modal-footer">
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => setShowRecipeModal(false)}
                     >
                       <i className="bi bi-x me-1"></i>
                       Đóng

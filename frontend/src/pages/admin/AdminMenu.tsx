@@ -18,6 +18,7 @@ const AdminMenu: React.FC = () => {
   const [filteredItems, setFilteredItems] = useState<MenuItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [currentRecipes, setCurrentRecipes] = useState<Recipe[]>([]);
   
   // Filter states
   const [searchName, setSearchName] = useState("");
@@ -46,7 +47,7 @@ const AdminMenu: React.FC = () => {
     name: "",
     description: "",
     price: "",
-    category_id: "",
+    category: "",
     status: "available",
     image: null as File | null
   });
@@ -121,19 +122,37 @@ const AdminMenu: React.FC = () => {
   const loadIngredients = async () => {
     try {
       const response = await inventoryApi.getWarehouse();
-      if (response.success && response.data) {
+      if (response.success) {
         setIngredients(response.data);
       }
     } catch (err: any) {
-      setError("Không thể tải danh sách nguyên liệu");
+      console.error('Failed to load ingredients:', err);
     }
   };
 
-  // Filter items
+  // Load recipes for a menu item
+  const loadRecipeForItem = async (menuItemId: number) => {
+    try {
+      const response = await menuApi.getRecipes(menuItemId);
+      if (response.data.success) {
+        setCurrentRecipes(response.data.data);
+        // Convert recipes to form format
+        const formRecipes = response.data.data.map(recipe => ({
+          ingredient_id: recipe.ingredient,
+          quantity_required: recipe.quantity_required?.toString() || ""
+        }));
+        setRecipeItems(formRecipes);
+      }
+    } catch (err: any) {
+      console.error('Failed to load recipes:', err);
+      setCurrentRecipes([]);
+      setRecipeItems([]);
+    }
+  };  // Filter items
   const filterItems = () => {
     const filtered = menuItems.filter((item: MenuItem) => {
       const matchesName = !searchName || item.name?.toLowerCase().includes(searchName.toLowerCase());
-      const matchesCategory = !selectedCategory || item.category_id === Number(selectedCategory);
+      const matchesCategory = !selectedCategory || item.category === Number(selectedCategory);
       const matchesStatus = !selectedStatus || item.status === selectedStatus;
       return matchesName && matchesCategory && matchesStatus;
     });
@@ -224,18 +243,31 @@ const AdminMenu: React.FC = () => {
     setError(null);
 
     try {
-      // TODO: Implement recipe API when backend is ready
-      // const response = await menuApi.updateRecipe(selectedItemForRecipe.id, recipeItems);
-      // if (response.data.success) {
-      //   setSuccessMessage("Cập nhật công thức thành công");
-      // } else {
-      //   setError(response.data.message || "Cập nhật công thức thất bại");
-      // }
-      
-      setSuccessMessage("Cập nhật công thức thành công");
-      setShowRecipeModal(false);
-      setSelectedItemForRecipe(null);
-      setRecipeItems([]);
+      // Filter out empty recipes
+      const validRecipes = recipeItems.filter(item => 
+        item.ingredient_id && item.quantity_required && parseFloat(item.quantity_required) > 0
+      );
+
+      if (validRecipes.length === 0) {
+        setError("Vui lòng thêm ít nhất một nguyên liệu");
+        return;
+      }
+
+      // Convert to API format
+      const apiData = validRecipes.map(item => ({
+        ingredient: item.ingredient_id,
+        quantity_required: parseFloat(item.quantity_required)
+      }));
+
+      const response = await menuApi.addIngredients(selectedItemForRecipe.id, apiData);
+      if (response.data.success) {
+        setSuccessMessage("Cập nhật công thức thành công");
+        setShowRecipeModal(false);
+        setSelectedItemForRecipe(null);
+        setRecipeItems([]);
+      } else {
+        setError(response.data.message || "Cập nhật công thức thất bại");
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || "Đã xảy ra lỗi");
     } finally {
@@ -264,15 +296,23 @@ const AdminMenu: React.FC = () => {
     setActionLoading(true);
     try {
       const response = await menuApi.deleteMenuItem(selectedItem.id);
-      if (response.data.success) {
-        setSuccessMessage("Xóa món ăn thành công");
-        await loadData(false);
-        setShowDeleteModal(false);
-        setSelectedItem(null);
+      
+      // Handle both 200 and 204 responses
+      if (response.status === 200 || response.status === 204) {
+        const data = response.data;
+        if (!data || data.success !== false) {
+          setSuccessMessage("Xóa món ăn thành công");
+          await loadData(false);
+          setShowDeleteModal(false);
+          setSelectedItem(null);
+        } else {
+          setError(data.message || "Xóa món ăn thất bại");
+        }
       } else {
-        setError(response.data.message || "Xóa món ăn thất bại");
+        setError("Xóa món ăn thất bại");
       }
     } catch (err: any) {
+      console.error('Delete error:', err);
       setError(err.response?.data?.message || "Xóa món ăn thất bại");
     } finally {
       setActionLoading(false);
@@ -290,7 +330,7 @@ const AdminMenu: React.FC = () => {
       name: "",
       description: "",
       price: "",
-      category_id: "",
+      category: "",
       status: "available",
       image: null
     });
@@ -318,7 +358,7 @@ const AdminMenu: React.FC = () => {
         name: item.name || "",
         description: item.description || "",
         price: item.price?.toString() || "",
-        category_id: item.category_id?.toString() || "",
+        category: item.category?.toString() || "",
         status: item.status || "available",
         image: null
       });
@@ -333,12 +373,12 @@ const AdminMenu: React.FC = () => {
     setShowDeleteModal(true);
   };
 
-  const openRecipeModal = (item: MenuItem) => {
+  const openRecipeModal = async (item: MenuItem) => {
     setSelectedItemForRecipe(item);
-    // TODO: Load existing recipe when backend is ready
-    // loadRecipeForItem(item.id);
     setRecipeItems([]);
     setShowRecipeModal(true);
+    // Load existing recipes
+    await loadRecipeForItem(item.id);
   };
 
   // Get category name
@@ -574,7 +614,7 @@ const AdminMenu: React.FC = () => {
                       
                       <p className="text-muted small mb-2">
                         <i className="bi bi-list me-1"></i>
-                        {getCategoryName(item.category_id)}
+                        {item.category_name || getCategoryName(item.category)}
                       </p>
                       
                       {item.description && (
@@ -747,8 +787,8 @@ const AdminMenu: React.FC = () => {
                             <label className="form-label">Danh mục *</label>
                             <select
                               className="form-select"
-                              value={menuItemForm.category_id}
-                              onChange={(e) => setMenuItemForm({...menuItemForm, category_id: e.target.value})}
+                              value={menuItemForm.category}
+                              onChange={(e) => setMenuItemForm({...menuItemForm, category: e.target.value})}
                               required
                             >
                               <option value="">Chọn danh mục</option>
@@ -840,8 +880,39 @@ const AdminMenu: React.FC = () => {
                       ></button>
                     </div>
                     <div className="modal-body">
+                      {/* Current recipes */}
+                      {currentRecipes.length > 0 && (
+                        <div className="mb-4">
+                          <h6 className="text-primary">
+                            <i className="bi bi-list-ul me-2"></i>
+                            Công thức hiện tại
+                          </h6>
+                          <div className="table-responsive">
+                            <table className="table table-sm">
+                              <thead>
+                                <tr>
+                                  <th>Nguyên liệu</th>
+                                  <th>Số lượng</th>
+                                  <th>Đơn vị</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {currentRecipes.map((recipe) => (
+                                  <tr key={recipe.id}>
+                                    <td>{recipe.ingredient_name}</td>
+                                    <td>{recipe.quantity_required}</td>
+                                    <td>{recipe.ingredient_unit}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                          <hr />
+                        </div>
+                      )}
+
                       <div className="d-flex justify-content-between align-items-center mb-3">
-                        <h6>Nguyên liệu cần thiết</h6>
+                        <h6>Cập nhật công thức</h6>
                         <button
                           type="button"
                           className="btn btn-outline-primary btn-sm"

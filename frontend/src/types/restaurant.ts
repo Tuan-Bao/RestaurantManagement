@@ -17,9 +17,9 @@ export interface Category {
 
 export interface Recipe {
   id: number;
-  menu_item_id: number;
-  ingredient_id: number;
-  ingredient?: Ingredient;
+  ingredient: number;
+  ingredient_name?: string;
+  ingredient_unit?: string;
   quantity_required: number;
   created_at: string;
   updated_at: string;
@@ -36,8 +36,8 @@ export interface Ingredient {
 
 export interface MenuItem {
   id: number;
-  category_id: number;
-  category?: Category;
+  category: number;
+  category_name?: string;
   name: string;
   description?: string;
   price: number;
@@ -70,7 +70,7 @@ export interface OrderItem {
   user_id: number;
   quantity: number;
   note?: string;
-  status: "ordered" | "cancel" | "cooking" | "done";
+  status: "ordered" | "cancelled" | "cooking" | "done";
   price_each: number;
   created_at: string;
   updated_at: string;
