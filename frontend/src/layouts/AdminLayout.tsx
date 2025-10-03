@@ -24,7 +24,24 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
+  
+  // Auto-expand inventory menu if currently on inventory-related pages
+  const isInventoryPage = location.pathname.startsWith('/admin/inventory') || 
+                         location.pathname.startsWith('/admin/stock-in') || 
+                         location.pathname.startsWith('/admin/stock-out');
+  
+  const [expandedMenu, setExpandedMenu] = useState<string | null>(
+    isInventoryPage ? "/admin/inventory" : null
+  );
+
+  // Update expanded menu when location changes
+  React.useEffect(() => {
+    if (isInventoryPage) {
+      setExpandedMenu("/admin/inventory");
+    } else {
+      setExpandedMenu(null);
+    }
+  }, [location.pathname, isInventoryPage]);
 
   const handleLogout = async () => {
     try {
