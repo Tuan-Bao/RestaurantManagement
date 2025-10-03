@@ -278,23 +278,22 @@ const WarehousePage: React.FC = () => {
               </div>
             </div>
             <div className="col-md-6">
-              <div className="d-flex gap-2">
+              <div className="d-flex justify-content-md-end gap-2">
                 <button
                   className="btn btn-outline-secondary"
                   onClick={() => setShowFilters(!showFilters)}
                 >
                   <i className="bi bi-funnel me-1"></i>
-                  Bộ lọc
+                  {showFilters ? 'Ẩn' : 'Hiện'} bộ lọc
                 </button>
-                {Object.keys(filters).length > 0 && (
-                  <button
-                    className="btn btn-outline-danger"
-                    onClick={clearFilters}
-                  >
-                    <i className="bi bi-x-circle me-1"></i>
-                    Xóa lọc
-                  </button>
-                )}
+                <button
+                  className="btn btn-outline-danger"
+                  onClick={clearFilters}
+                  disabled={Object.keys(filters).length === 0 && !searchTerm}
+                >
+                  <i className="bi bi-x-circle me-1"></i>
+                  Xóa bộ lọc
+                </button>
               </div>
             </div>
           </div>

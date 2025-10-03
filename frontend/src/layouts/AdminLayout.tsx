@@ -95,7 +95,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         className={`bg-dark text-white sidebar-width position-fixed position-lg-relative h-100 ${
           sidebarOpen ? "d-block" : "d-none d-lg-block"
         }`}
-        style={{ zIndex: 1041 }}
+        style={{ zIndex: 1041, width: '280px' }}
       >
         {/* Logo */}
         <div className="p-3 border-bottom border-secondary d-flex justify-content-between align-items-center">
