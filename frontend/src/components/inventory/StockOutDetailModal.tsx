@@ -73,8 +73,8 @@ const StockOutDetailModal: React.FC<StockOutDetailModalProps> = ({
 
   return (
     <div className="modal show d-block" tabIndex={-1} style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-      <div className="modal-dialog modal-dialog-centered modal-lg">
-        <div className="modal-content">
+      <div className="modal-dialog modal-dialog-centered modal-lg" style={{ maxHeight: '90vh' }}>
+        <div className="modal-content" style={{ maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
           {/* Header */}
           <div className="modal-header bg-danger text-white">
             <h5 className="modal-title">
@@ -89,7 +89,7 @@ const StockOutDetailModal: React.FC<StockOutDetailModalProps> = ({
           </div>
 
           {/* Body */}
-          <div className="modal-body">
+          <div className="modal-body" style={{ maxHeight: 'calc(90vh - 120px)', overflowY: 'auto' }}>
             <div className="row g-4">
               {/* Thông tin cơ bản */}
               <div className="col-md-6">
@@ -275,7 +275,7 @@ const StockOutDetailModal: React.FC<StockOutDetailModalProps> = ({
           </div>
 
           {/* Footer */}
-          <div className="modal-footer">
+          <div className="modal-footer" style={{ flexShrink: 0 }}>
             <button
               type="button"
               className="btn btn-secondary"

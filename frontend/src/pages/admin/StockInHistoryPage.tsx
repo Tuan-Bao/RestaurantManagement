@@ -9,6 +9,17 @@ const StockInHistoryPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState({ total_records: 0 });
+
+  // Helper function to format quantity display
+  const formatQuantity = (quantity: number): string => {
+    if (quantity % 1 === 0) {
+      // Nếu là số nguyên, hiển thị không có phần thập phân
+      return quantity.toString().replace(/\.?0+$/, '');
+    } else {
+      // Nếu có phần thập phân, loại bỏ số 0 thừa ở cuối
+      return quantity.toString().replace(/\.?0+$/, '');
+    }
+  };
   
   // Modal state
   const [selectedStockIn, setSelectedStockIn] = useState<StockIn | null>(null);
@@ -275,7 +286,7 @@ const StockInHistoryPage: React.FC = () => {
                         </div>
                       </td>
                       <td>
-                        <span className="fw-bold">{stockIn.quantity} {stockIn.ingredient.unit}</span>
+                        <span className="fw-bold">{formatQuantity(stockIn.quantity)} {stockIn.ingredient.unit}</span>
                       </td>
                       <td>{formatCurrency(stockIn.price)}</td>
                       <td>{formatCurrency(stockIn.price_per_unit)}</td>

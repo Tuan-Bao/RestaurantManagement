@@ -245,6 +245,11 @@ class StockOutListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         queryset = StockOut.objects.select_related('ingredient', 'user').order_by('-id')
         
+        # Filter by reason
+        reason = self.request.query_params.get('reason')
+        if reason in dict(StockOut.REASON_CHOICES):
+            queryset = queryset.filter(reason=reason)
+
         # Filter by ingredient name
         ingredient_name = self.request.query_params.get('ingredient_name')
         if ingredient_name:
