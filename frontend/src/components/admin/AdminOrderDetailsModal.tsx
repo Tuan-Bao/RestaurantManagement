@@ -108,24 +108,24 @@ const AdminOrderDetailsModal: React.FC<AdminOrderDetailsModalProps> = ({
                                     </div>
                                     <div className="card-body">
                                         <div className="row text-center">
-                                            <div className="col-4">
+                                            <div className="col-3">
                                                 <div className="border-end">
-                                                    <h4 className="text-primary mb-1">{(order.items || []).length}</h4>
+                                                    <h6 className="text-primary mb-1">{(order.items || []).length}</h6>
                                                     <small className="text-muted">Món</small>
                                                 </div>
                                             </div>
                                             <div className="col-4">
                                                 <div className="border-end">
-                                                    <h4 className="text-success mb-1">
+                                                    <h6 className="text-success mb-1">
                                                         {(order.items || []).reduce((sum, item) => sum + item.quantity, 0)}
-                                                    </h4>
+                                                    </h6>
                                                     <small className="text-muted">Số lượng</small>
                                                 </div>
                                             </div>
-                                            <div className="col-4">
-                                                <h4 className="text-warning mb-1">
+                                            <div className="col-5">
+                                                <h6 className="text-warning mb-1">
                                                     {order.totalAmount.toLocaleString("vi-VN")}đ
-                                                </h4>
+                                                </h6>
                                                 <small className="text-muted">Tổng tiền</small>
                                             </div>
                                         </div>
