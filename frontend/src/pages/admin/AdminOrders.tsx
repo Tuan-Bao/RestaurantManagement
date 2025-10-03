@@ -393,7 +393,7 @@ const AdminOrders: React.FC = () => {
                                     <tr>
                                         <th>Số đơn</th>
                                         <th>Bàn</th>
-                                        <th>Khách hàng</th>
+                                        <th>Nhân viên nhận bàn</th>
                                         <th>Thời gian</th>
                                         <th className="text-end">Tổng tiền</th>
                                         <th>Trạng thái</th>

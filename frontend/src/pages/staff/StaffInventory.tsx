@@ -20,6 +20,17 @@ const StaffInventory: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
+  // Helper function to format quantity display
+  const formatQuantity = (quantity: number): string => {
+    if (quantity % 1 === 0) {
+      // Nếu là số nguyên, hiển thị không có phần thập phân
+      return quantity.toString().replace(/\.?0+$/, '');
+    } else {
+      // Nếu có phần thập phân, loại bỏ số 0 thừa ở cuối
+      return quantity.toString().replace(/\.?0+$/, '');
+    }
+  };
+
   const fetchWarehouse = async () => {
     try {
       setLoading(true);
@@ -275,8 +286,8 @@ const StaffInventory: React.FC = () => {
               <thead className="table-light">
                 <tr>
                   <th>Nguyên liệu</th>
-                  <th>Đơn vị</th>
                   <th>Tồn kho</th>
+                  <th>Đơn vị</th>
                   <th>Mức tối thiểu</th>
                   <th>Giá/đơn vị</th>
                   <th>Trạng thái</th>
@@ -300,7 +311,6 @@ const StaffInventory: React.FC = () => {
                           <small className="text-muted">ID: {ingredient.id}</small>
                         </div>
                       </td>
-                      <td>{ingredient.unit}</td>
                       <td>
                         <span className={`fw-bold ${
                           ingredient.stock_quantity === 0 
@@ -309,12 +319,13 @@ const StaffInventory: React.FC = () => {
                             ? 'text-warning' 
                             : 'text-success'
                         }`}>
-                          {ingredient.stock_quantity?.toLocaleString() || 0}
+                          {formatQuantity(ingredient.stock_quantity || 0)}
                         </span>
                       </td>
+                      <td>{ingredient.unit}</td>
                       <td>
                         <span className="text-muted">
-                          {ingredient.min_quantity?.toLocaleString() || 0}
+                          {formatQuantity(ingredient.min_quantity || 0)}
                         </span>
                       </td>
                       <td>

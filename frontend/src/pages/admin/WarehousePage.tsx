@@ -31,6 +31,17 @@ const WarehousePage: React.FC = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedIngredient, setSelectedIngredient] = useState<Ingredient | null>(null);
 
+  // Helper function to format quantity display
+  const formatQuantity = (quantity: number): string => {
+    if (quantity % 1 === 0) {
+      // Nếu là số nguyên, hiển thị không có phần thập phân
+      return quantity.toString().replace(/\.?0+$/, '');
+    } else {
+      // Nếu có phần thập phân, loại bỏ số 0 thừa ở cuối
+      return quantity.toString().replace(/\.?0+$/, '');
+    }
+  };
+
   const fetchWarehouse = async () => {
     try {
       setLoading(true);
@@ -377,9 +388,9 @@ const WarehousePage: React.FC = () => {
                       </td>
                       <td>{ingredient.unit}</td>
                       <td>
-                        <span className="fw-bold">{ingredient.stock_quantity}</span>
+                        <span className="fw-bold">{formatQuantity(ingredient.stock_quantity || 0)}</span>
                       </td>
-                      <td>{ingredient.min_quantity}</td>
+                      <td>{formatQuantity(ingredient.min_quantity || 0)}</td>
                       <td>{formatCurrency(ingredient.price_per_unit)}</td>
                       <td>{getStatusBadge(ingredient.status, ingredient.is_low_stock)}</td>
                       <td>

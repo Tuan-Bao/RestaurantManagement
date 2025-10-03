@@ -9,6 +9,17 @@ const StockOutHistoryPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState({ total_records: 0 });
+
+  // Helper function to format quantity display
+  const formatQuantity = (quantity: number): string => {
+    if (quantity % 1 === 0) {
+      // Nếu là số nguyên, hiển thị không có phần thập phân
+      return quantity.toString().replace(/\.?0+$/, '');
+    } else {
+      // Nếu có phần thập phân, loại bỏ số 0 thừa ở cuối
+      return quantity.toString().replace(/\.?0+$/, '');
+    }
+  };
   
   // Modal state
   const [selectedStockOut, setSelectedStockOut] = useState<StockOut | null>(null);
@@ -325,7 +336,7 @@ const StockOutHistoryPage: React.FC = () => {
                         </div>
                       </td>
                       <td>
-                        <span className="fw-bold">{stockOut.quantity} {stockOut.ingredient.unit}</span>
+                        <span className="fw-bold">{formatQuantity(stockOut.quantity)} {stockOut.ingredient.unit}</span>
                       </td>
                       <td>
                         {getReasonBadge(stockOut.reason, stockOut.order_item)}
