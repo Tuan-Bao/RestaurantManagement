@@ -337,7 +337,7 @@ const AdminMenu: React.FC = () => {
         </Row>
 
         {/* Action Buttons */}
-        <Row gutter={[16, 16]} style={{ marginBottom: "24px" }}>
+        {/* <Row gutter={[16, 16]} style={{ marginBottom: "24px" }}>
           <Col span={24}>
             <Space>
               <Button
@@ -361,7 +361,7 @@ const AdminMenu: React.FC = () => {
               </Button>
             </Space>
           </Col>
-        </Row>
+        </Row> */}
 
         {/* Filters */}
         {/* Action Buttons */}
