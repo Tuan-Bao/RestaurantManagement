@@ -158,6 +158,48 @@ const AdminOrders: React.FC = () => {
         setSelectedOrder(null);
     };
 
+    // Add order status update function
+    const handleOrderStatusChange = async (orderId: number, newStatus: Order["status"]) => {
+        try {
+            // Only allow changing from active to completed
+            const backendStatus = newStatus === 'completed' ? 'paid' : 'unpaid';
+
+            const response = await ordersApiService.updateOrderStatus(orderId, backendStatus);
+
+            if (response.data.success) {
+                await loadOrders();
+            } else {
+                throw new Error('Không thể cập nhật trạng thái đơn hàng');
+            }
+        } catch (err) {
+            console.error('Error updating order status:', err);
+            alert('Có lỗi xảy ra khi cập nhật trạng thái đơn hàng');
+        }
+    };
+
+    // Add item status update function
+    const handleItemStatusChange = async (itemId: number, status: 'ordered' | 'cooking' | 'done'|'cancelled') => {
+        try {
+            const response = await ordersApiService.updateOrderItemStatus(itemId, status);
+
+            if (response.data.success) {
+                await loadOrders();
+                // Also refresh the selected order in the modal
+                if (selectedOrder) {
+                    const updatedOrderResponse = await ordersApiService.getOrderById(selectedOrder.id);
+                    if (updatedOrderResponse.data.success) {
+                        setSelectedOrder(transformOrderData(updatedOrderResponse.data.data));
+                    }
+                }
+            } else {
+                throw new Error('Không thể cập nhật trạng thái món ăn');
+            }
+        } catch (err) {
+            console.error('Error updating item status:', err);
+            alert('Có lỗi xảy ra khi cập nhật trạng thái món ăn');
+        }
+    };
+
     const stats = getOrderStats();
 
     if (loading) {
@@ -429,6 +471,7 @@ const AdminOrders: React.FC = () => {
                     order={selectedOrder}
                     show={showOrderModal}
                     onClose={handleCloseModal}
+                    onItemStatusChange={handleItemStatusChange}
                 />
             )}
         </AdminLayout>
