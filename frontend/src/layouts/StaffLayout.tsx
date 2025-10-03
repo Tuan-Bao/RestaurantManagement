@@ -53,7 +53,7 @@ const StaffLayout: React.FC<StaffLayoutProps> = ({ children }) => {
         className={`bg-primary text-white sidebar-width position-fixed position-lg-relative h-100 ${
           sidebarOpen ? "d-block" : "d-none d-lg-block"
         }`}
-        style={{ zIndex: 1041 }}
+        style={{ zIndex: 1041, width: '280px', minWidth: '280px', maxWidth: '280px' }}
       >
         {/* Logo */}
         <div className="p-3 border-bottom border-light border-opacity-25 d-flex justify-content-between align-items-center">
