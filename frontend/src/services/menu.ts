@@ -1,33 +1,31 @@
-import api from './api';
-import type { Category, MenuItem, Recipe } from '../types/restaurant';
+import api from "./api";
+import type { Category, MenuItem, Recipe } from "../types/restaurant";
 
 export const menuApi = {
   // Categories
-  getCategories: (params?: {
-    name?: string;
-  }) => {
+  getCategories: (params?: { name?: string }) => {
     return api.get<{
       success: boolean;
       data: Category[];
       message?: string;
-    }>('/menu/categories/', { params });
+    }>("/menu/categories/", { params });
   },
 
-  createCategory: (data: {
-    name: string;
-    description?: string;
-  }) => {
+  createCategory: (data: { name: string; description?: string }) => {
     return api.post<{
       success: boolean;
       data: Category;
       message?: string;
-    }>('/menu/categories/', data);
+    }>("/menu/categories/", data);
   },
 
-  updateCategory: (id: number, data: {
-    name?: string;
-    description?: string;
-  }) => {
+  updateCategory: (
+    id: number,
+    data: {
+      name?: string;
+      description?: string;
+    }
+  ) => {
     return api.put<{
       success: boolean;
       data: Category;
@@ -46,13 +44,13 @@ export const menuApi = {
   getMenuItems: (params?: {
     name?: string;
     category?: number;
-    status?: 'available' | 'unavailable';
+    status?: "available" | "unavailable";
   }) => {
     return api.get<{
       success: boolean;
       data: MenuItem[];
       message?: string;
-    }>('/menu/items/', { params });
+    }>("/menu/items/", { params });
   },
 
   getMenuItem: (itemId: number) => {
@@ -68,9 +66,9 @@ export const menuApi = {
       success: boolean;
       data: MenuItem;
       message?: string;
-    }>('/menu/items/', data, {
+    }>("/menu/items/", data, {
       headers: {
-        'Content-Type': 'multipart/form-data',
+        "Content-Type": "multipart/form-data",
       },
     });
   },
@@ -82,7 +80,7 @@ export const menuApi = {
       message?: string;
     }>(`/menu/items/${id}/`, data, {
       headers: {
-        'Content-Type': 'multipart/form-data',
+        "Content-Type": "multipart/form-data",
       },
     });
   },
@@ -104,10 +102,13 @@ export const menuApi = {
     }>(`/menu/items/${menuId}/recipes/`);
   },
 
-  addIngredients: (menuId: number, data: {
-    ingredient: number;
-    quantity_required: number;
-  }[]) => {
+  addIngredients: (
+    menuId: number,
+    data: {
+      ingredient: number;
+      quantity_required: number;
+    }[]
+  ) => {
     return api.post<{
       success: boolean;
       data: Recipe[];
@@ -115,10 +116,13 @@ export const menuApi = {
     }>(`/menu/items/${menuId}/recipes/`, data);
   },
 
-  updateIngredientsInBulk: (menuId: number, data: {
-    id: number;
-    quantity_required: number;
-  }[]) => {
+  updateIngredientsInBulk: (
+    menuId: number,
+    data: {
+      ingredient: number;
+      quantity_required: number;
+    }[]
+  ) => {
     return api.patch<{
       success: boolean;
       data: Recipe[];
@@ -126,9 +130,12 @@ export const menuApi = {
     }>(`/menu/items/${menuId}/recipes/bulk/`, data);
   },
 
-  updateIngredient: (recipeId: number, data: {
-    quantity_required: number;
-  }) => {
+  updateIngredient: (
+    recipeId: number,
+    data: {
+      quantity_required: number;
+    }
+  ) => {
     return api.patch<{
       success: boolean;
       data: Recipe;
@@ -141,5 +148,5 @@ export const menuApi = {
       success: boolean;
       message?: string;
     }>(`/menu/recipes/${recipeId}/`);
-  }
+  },
 };

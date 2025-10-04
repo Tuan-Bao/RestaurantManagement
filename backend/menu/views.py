@@ -392,7 +392,7 @@ class RecipeDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 class RecipeBulkUpdateView(APIView):
     """
-    PATCH /api/menu/items/{menu_id}/recipes/ - Cập nhật công thức theo mảng ingredient
+    PATCH /api/menu/items/{menu_id}/recipes/bulk/ - Cập nhật công thức theo mảng ingredient
     Body: [ {"ingredient": id, "quantity_required": value}, ... ]
     """
     permission_classes = [IsAuthenticated, IsAdminUser]
