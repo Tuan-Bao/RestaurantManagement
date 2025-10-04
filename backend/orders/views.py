@@ -535,7 +535,7 @@ class OrderItemStatusUpdateView(generics.UpdateAPIView):
                 'message': f'Cannot change to "served" from "{old_status}". Only items with status "done" can be changed to "served".'
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        if status_value == 'cancelled' and old_status in ['done', 'served']:
+        if status_value == 'cancelled' and old_status in ['served']:
             return Response({
                 'success': False,
                 'message': f'Cannot change to "cancelled" from "{old_status}". Items with status "done" or "served" cannot be cancelled.'
