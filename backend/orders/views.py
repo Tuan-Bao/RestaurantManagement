@@ -228,6 +228,31 @@ class OrderItemBulkUpdateView(APIView):
                         order_item.save()
                         updated.append(OrderItemSerializer(order_item).data)
                     
+                    elif order_item.status == 'cancelled':
+                        # Xóa item cancelled và tạo record mới với status ordered
+                        removed.append({
+                            'menu_item_id': menu_item_id,
+                            'menu_item_name': order_item.menu_item.name,
+                            'quantity': order_item.quantity,
+                            'status': order_item.status
+                        })
+                        order_item.delete()
+                        
+                        # Tạo record mới với status ordered
+                        item_data = incoming_items[menu_item_id]
+                        try:
+                            new_order_item = OrderItem.objects.create(
+                                order=order,
+                                menu_item=order_item.menu_item,
+                                quantity=item_data['quantity'],
+                                note=item_data['note'],
+                                price_each=order_item.menu_item.price,
+                                status='ordered'
+                            )
+                            added.append(OrderItemSerializer(new_order_item).data)
+                        except Exception as e:
+                            errors.append({'error': f'Failed to add new item for menu_item {menu_item_id}: {str(e)}'})
+                    
                     elif order_item.status == 'cooking':
                         # Tạo record mới nếu status là cooking
                         existing_ordered = OrderItem.objects.filter(
