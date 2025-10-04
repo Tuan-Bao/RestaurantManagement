@@ -1,17 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import StaffLayout from '../../layouts/StaffLayout';
-import TableCard from '../../components/shared/TableCard';
-import FloorTabs from '../../components/shared/FloorTabs';
-import TableStats from '../../components/shared/TableStats';
-import TableOrderModal from '../../components/shared/TableOrderModal';
-import MenuSelection from '../../components/shared/MenuSelection';
-import PaymentModal from '../../components/shared/PaymentModal';
-import ConfirmDialog from '../../components/shared/ConfirmDialog';
-import { tablesApi } from '../../services/tables';
-import { ordersApi } from '../../services/orders';
-import type { Table, Order } from '../../types/restaurant';
+import React, { useState, useEffect } from "react";
+import StaffLayout from "../../layouts/StaffLayout";
+import TableCard from "../../components/shared/TableCard";
+import FloorTabs from "../../components/shared/FloorTabs";
+import TableStats from "../../components/shared/TableStats";
+import TableOrderModal from "../../components/shared/TableOrderModal";
+import MenuSelection from "../../components/shared/MenuSelection";
+import PaymentModal from "../../components/shared/PaymentModal";
+import ConfirmDialog from "../../components/shared/ConfirmDialog";
+import { tablesApi } from "../../services/tables";
+import { ordersApi } from "../../services/orders";
+import type { Table, Order } from "../../types/restaurant";
 // @ts-ignore
-import { useNotification } from '../../contexts/NotificationContext';
+import { useNotification } from "../../contexts/NotificationContext";
 
 interface Floor {
   id: number;
@@ -34,7 +34,7 @@ const StaffTables: React.FC = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
-  
+
   const [confirmAction, setConfirmAction] = useState<{
     title: string;
     message: string;
@@ -50,17 +50,17 @@ const StaffTables: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await tablesApi.getTables();
       if (response.data.success) {
         setTables(response.data.data);
         groupTablesByFloor(response.data.data);
       } else {
-        setError('Không thể tải danh sách bàn');
+        setError("Không thể tải danh sách bàn");
       }
     } catch (err) {
-      console.error('Error loading tables:', err);
-      setError('Có lỗi xảy ra khi tải danh sách bàn');
+      console.error("Error loading tables:", err);
+      setError("Có lỗi xảy ra khi tải danh sách bàn");
     } finally {
       setLoading(false);
     }
@@ -82,7 +82,7 @@ const StaffTables: React.FC = () => {
       .map(([floorId, floorTables]) => ({
         id: Number(floorId),
         name: `Tầng ${floorId}`,
-        tables: floorTables.sort((a, b) => a.name.localeCompare(b.name))
+        tables: floorTables.sort((a, b) => a.name.localeCompare(b.name)),
       }))
       .sort((a, b) => a.id - b.id);
 
@@ -98,9 +98,9 @@ const StaffTables: React.FC = () => {
   };
 
   const getOverallStats = () => {
-    const available = tables.filter(t => t.status === 'available').length;
-    const occupied = tables.filter(t => t.status === 'unavailable').length;
-    
+    const available = tables.filter(t => t.status === "available").length;
+    const occupied = tables.filter(t => t.status === "unavailable").length;
+
     return {
       total: tables.length,
       available,
@@ -110,13 +110,13 @@ const StaffTables: React.FC = () => {
 
   const handleTableSelect = (table: Table) => {
     setSelectedTable(table);
-    
-    if (table.status === 'available') {
+
+    if (table.status === "available") {
       // Show confirm dialog for opening table
       setConfirmAction({
-        title: 'Mở bàn',
+        title: "Mở bàn",
         message: `Bạn có muốn mở ${table.name} không?`,
-        action: () => handleOpenTable(table)
+        action: () => handleOpenTable(table),
       });
       setShowConfirmDialog(true);
     } else {
@@ -127,17 +127,20 @@ const StaffTables: React.FC = () => {
 
   const handleOpenTable = async (table: Table) => {
     try {
-      const response = await tablesApi.updateTableStatus(table.id, 'unavailable');
+      const response = await tablesApi.updateTableStatus(
+        table.id,
+        "unavailable"
+      );
       if (response.data.success) {
         await loadTables();
         setShowConfirmDialog(false);
-        showNotification(`Đã mở ${table.name}`, 'success');
+        showNotification(`Đã mở ${table.name}`, "success");
       } else {
-        showNotification('Không thể mở bàn. Vui lòng thử lại.', 'error');
+        showNotification("Không thể mở bàn. Vui lòng thử lại.", "error");
       }
     } catch (error) {
-      console.error('Error opening table:', error);
-      showNotification('Có lỗi xảy ra khi mở bàn', 'error');
+      console.error("Error opening table:", error);
+      showNotification("Có lỗi xảy ra khi mở bàn", "error");
     }
   };
 
@@ -155,22 +158,25 @@ const StaffTables: React.FC = () => {
       const response = await ordersApi.getOrderByTable(selectedTable.id);
       if (response.data.success && response.data.data) {
         const order = response.data.data;
-        const totalAmount = order.order_items?.reduce((sum, item) => 
-          sum + (item.quantity * item.price_each), 0) || 0;
-        
+        const totalAmount =
+          order?.order_items
+            ?.filter(item => item.status === "done")
+            ?.reduce((sum, item) => sum + item.quantity * item.price_each, 0) ||
+          0;
+
         setCurrentOrder({
           ...order,
           total_amount: totalAmount,
-          tableName: selectedTable.name
+          tableName: selectedTable.name,
         });
         setShowOrderModal(false);
         setShowPaymentModal(true);
       } else {
-        showNotification('Không tìm thấy đơn hàng cho bàn này', 'error');
+        showNotification("Không tìm thấy đơn hàng cho bàn này", "error");
       }
     } catch (error) {
-      console.error('Error loading order for payment:', error);
-      showNotification('Có lỗi xảy ra khi tải thông tin đơn hàng', 'error');
+      console.error("Error loading order for payment:", error);
+      showNotification("Có lỗi xảy ra khi tải thông tin đơn hàng", "error");
     }
   };
 
@@ -178,9 +184,9 @@ const StaffTables: React.FC = () => {
     if (!selectedTable) return;
 
     setConfirmAction({
-      title: 'Đóng bàn',
+      title: "Đóng bàn",
       message: `Bạn có muốn đóng ${selectedTable.name} không?`,
-      action: () => handleCloseTableConfirm()
+      action: () => handleCloseTableConfirm(),
     });
     setShowOrderModal(false);
     setShowConfirmDialog(true);
@@ -190,17 +196,20 @@ const StaffTables: React.FC = () => {
     if (!selectedTable) return;
 
     try {
-      const response = await tablesApi.updateTableStatus(selectedTable.id, 'available');
+      const response = await tablesApi.updateTableStatus(
+        selectedTable.id,
+        "available"
+      );
       if (response.data.success) {
         await loadTables();
         setShowConfirmDialog(false);
-        showNotification(`Đã đóng ${selectedTable.name}`, 'success');
+        showNotification(`Đã đóng ${selectedTable.name}`, "success");
       } else {
-        showNotification('Không thể đóng bàn. Vui lòng thử lại.', 'error');
+        showNotification("Không thể đóng bàn. Vui lòng thử lại.", "error");
       }
     } catch (error) {
-      console.error('Error closing table:', error);
-      showNotification('Có lỗi xảy ra khi đóng bàn', 'error');
+      console.error("Error closing table:", error);
+      showNotification("Có lỗi xảy ra khi đóng bàn", "error");
     }
   };
 
@@ -224,7 +233,10 @@ const StaffTables: React.FC = () => {
   if (loading) {
     return (
       <StaffLayout>
-        <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '400px' }}>
+        <div
+          className="d-flex justify-content-center align-items-center"
+          style={{ minHeight: "400px" }}
+        >
           <div className="spinner-border text-primary" role="status">
             <span className="visually-hidden">Đang tải...</span>
           </div>
@@ -250,7 +262,7 @@ const StaffTables: React.FC = () => {
         </div>
 
         <div className="d-flex gap-2">
-          <button 
+          <button
             className="btn btn-outline-primary"
             onClick={handleRefresh}
             disabled={loading}
@@ -293,10 +305,7 @@ const StaffTables: React.FC = () => {
         {currentTables.length > 0 ? (
           currentTables.map(table => (
             <div key={table.id} className="col-6 col-md-4 col-lg-3 mb-3">
-              <TableCard 
-                table={table} 
-                onSelect={handleTableSelect} 
-              />
+              <TableCard table={table} onSelect={handleTableSelect} />
             </div>
           ))
         ) : (
@@ -304,16 +313,16 @@ const StaffTables: React.FC = () => {
             <div className="text-center py-5">
               <i className="bi bi-grid-3x3 fs-1 text-muted mb-3"></i>
               <h5 className="text-muted">
-                {activeFloor === null 
-                  ? 'Không có bàn nào trong hệ thống'
-                  : `Không có bàn nào trong ${floors.find(f => f.id === activeFloor)?.name}`
-                }
+                {activeFloor === null
+                  ? "Không có bàn nào trong hệ thống"
+                  : `Không có bàn nào trong ${
+                      floors.find(f => f.id === activeFloor)?.name
+                    }`}
               </h5>
               <p className="text-muted">
-                {activeFloor === null 
-                  ? 'Vui lòng liên hệ quản trị viên để thêm bàn mới.'
-                  : 'Vui lòng chọn tầng khác hoặc liên hệ quản trị viên.'
-                }
+                {activeFloor === null
+                  ? "Vui lòng liên hệ quản trị viên để thêm bàn mới."
+                  : "Vui lòng chọn tầng khác hoặc liên hệ quản trị viên."}
               </p>
             </div>
           </div>
@@ -340,7 +349,7 @@ const StaffTables: React.FC = () => {
       <MenuSelection
         isOpen={showMenuSelection}
         tableId={selectedTable?.id || 0}
-        tableName={selectedTable?.name || ''}
+        tableName={selectedTable?.name || ""}
         onClose={() => setShowMenuSelection(false)}
         onOrderCreated={handleOrderCreated}
       />
@@ -359,8 +368,8 @@ const StaffTables: React.FC = () => {
       {/* Confirm Dialog */}
       <ConfirmDialog
         isOpen={showConfirmDialog}
-        title={confirmAction?.title || ''}
-        message={confirmAction?.message || ''}
+        title={confirmAction?.title || ""}
+        message={confirmAction?.message || ""}
         confirmText="Xác nhận"
         cancelText="Hủy"
         onConfirm={() => {
