@@ -1,17 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import AdminLayout from '../../layouts/AdminLayout';
-import TableCard from '../../components/shared/TableCard';
-import FloorTabs from '../../components/shared/FloorTabs';
-import TableStats from '../../components/shared/TableStats';
-import TableOrderModal from '../../components/shared/TableOrderModal';
-import MenuSelection from '../../components/shared/MenuSelection';
-import PaymentModal from '../../components/shared/PaymentModal';
-import ConfirmDialog from '../../components/shared/ConfirmDialog';
-import { tablesApi } from '../../services/tables';
-import { ordersApi } from '../../services/orders';
-import type { Table, Order } from '../../types/restaurant';
+import React, { useState, useEffect, use } from "react";
+import AdminLayout from "../../layouts/AdminLayout";
+import TableCard from "../../components/shared/TableCard";
+import FloorTabs from "../../components/shared/FloorTabs";
+import TableStats from "../../components/shared/TableStats";
+import TableOrderModal from "../../components/shared/TableOrderModal";
+import MenuSelection from "../../components/shared/MenuSelection";
+import PaymentModal from "../../components/shared/PaymentModal";
+import ConfirmDialog from "../../components/shared/ConfirmDialog";
+import { tablesApi } from "../../services/tables";
+import { ordersApi } from "../../services/orders";
+import type { Table, Order } from "../../types/restaurant";
 // @ts-ignore
-import { useNotification } from '../../contexts/NotificationContext';
+import { useNotification } from "../../contexts/NotificationContext";
 
 interface Floor {
   id: number;
@@ -34,7 +34,7 @@ const AdminTables: React.FC = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
-  
+
   const [confirmAction, setConfirmAction] = useState<{
     title: string;
     message: string;
@@ -48,9 +48,9 @@ const AdminTables: React.FC = () => {
   const [tableToDelete, setTableToDelete] = useState<Table | null>(null);
 
   const [tableForm, setTableForm] = useState({
-    name: '',
+    name: "",
     floor: 1,
-    status: 'available' as 'available' | 'unavailable'
+    status: "available" as "available" | "unavailable",
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -63,17 +63,17 @@ const AdminTables: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await tablesApi.getTables();
       if (response.data.success) {
         setTables(response.data.data);
         groupTablesByFloor(response.data.data);
       } else {
-        setError('Không thể tải danh sách bàn');
+        setError("Không thể tải danh sách bàn");
       }
     } catch (err) {
-      console.error('Error loading tables:', err);
-      setError('Có lỗi xảy ra khi tải danh sách bàn');
+      console.error("Error loading tables:", err);
+      setError("Có lỗi xảy ra khi tải danh sách bàn");
     } finally {
       setLoading(false);
     }
@@ -95,7 +95,7 @@ const AdminTables: React.FC = () => {
       .map(([floorId, floorTables]) => ({
         id: Number(floorId),
         name: `Tầng ${floorId}`,
-        tables: floorTables.sort((a, b) => a.name.localeCompare(b.name))
+        tables: floorTables.sort((a, b) => a.name.localeCompare(b.name)),
       }))
       .sort((a, b) => a.id - b.id);
 
@@ -111,9 +111,9 @@ const AdminTables: React.FC = () => {
   };
 
   const getOverallStats = () => {
-    const available = tables.filter(t => t.status === 'available').length;
-    const occupied = tables.filter(t => t.status === 'unavailable').length;
-    
+    const available = tables.filter(t => t.status === "available").length;
+    const occupied = tables.filter(t => t.status === "unavailable").length;
+
     return {
       total: tables.length,
       available,
@@ -123,13 +123,13 @@ const AdminTables: React.FC = () => {
 
   const handleTableSelect = (table: Table) => {
     setSelectedTable(table);
-    
-    if (table.status === 'available') {
+
+    if (table.status === "available") {
       // Show confirm dialog for opening table
       setConfirmAction({
-        title: 'Mở bàn',
+        title: "Mở bàn",
         message: `Bạn có muốn mở ${table.name} không?`,
-        action: () => handleOpenTable(table)
+        action: () => handleOpenTable(table),
       });
       setShowConfirmDialog(true);
     } else {
@@ -140,17 +140,20 @@ const AdminTables: React.FC = () => {
 
   const handleOpenTable = async (table: Table) => {
     try {
-      const response = await tablesApi.updateTableStatus(table.id, 'unavailable');
+      const response = await tablesApi.updateTableStatus(
+        table.id,
+        "unavailable"
+      );
       if (response.data.success) {
         await loadTables();
         setShowConfirmDialog(false);
-        showNotification(`Đã mở ${table.name}`, 'success');
+        showNotification(`Đã mở ${table.name}`, "success");
       } else {
-        showNotification('Không thể mở bàn. Vui lòng thử lại.', 'error');
+        showNotification("Không thể mở bàn. Vui lòng thử lại.", "error");
       }
     } catch (error) {
-      console.error('Error opening table:', error);
-      showNotification('Có lỗi xảy ra khi mở bàn', 'error');
+      console.error("Error opening table:", error);
+      showNotification("Có lỗi xảy ra khi mở bàn", "error");
     }
   };
 
@@ -168,22 +171,25 @@ const AdminTables: React.FC = () => {
       const response = await ordersApi.getOrderByTable(selectedTable.id);
       if (response.data.success && response.data.data) {
         const order = response.data.data;
-        const totalAmount = order.order_items?.reduce((sum, item) => 
-          sum + (item.quantity * item.price_each), 0) || 0;
-        
+        const totalAmount =
+          order?.order_items
+            ?.filter(item => item.status === "done")
+            ?.reduce((sum, item) => sum + item.quantity * item.price_each, 0) ||
+          0;
+
         setCurrentOrder({
           ...order,
           total_amount: totalAmount,
-          tableName: selectedTable.name
+          tableName: selectedTable.name,
         });
         setShowOrderModal(false);
         setShowPaymentModal(true);
       } else {
-        showNotification('Không tìm thấy đơn hàng cho bàn này', 'error');
+        showNotification("Không tìm thấy đơn hàng cho bàn này", "error");
       }
     } catch (error) {
-      console.error('Error loading order for payment:', error);
-      showNotification('Có lỗi xảy ra khi tải thông tin đơn hàng', 'error');
+      console.error("Error loading order for payment:", error);
+      showNotification("Có lỗi xảy ra khi tải thông tin đơn hàng", "error");
     }
   };
 
@@ -191,9 +197,9 @@ const AdminTables: React.FC = () => {
     if (!selectedTable) return;
 
     setConfirmAction({
-      title: 'Đóng bàn',
+      title: "Đóng bàn",
       message: `Bạn có muốn đóng ${selectedTable.name} không?`,
-      action: () => handleCloseTableConfirm()
+      action: () => handleCloseTableConfirm(),
     });
     setShowOrderModal(false);
     setShowConfirmDialog(true);
@@ -203,17 +209,20 @@ const AdminTables: React.FC = () => {
     if (!selectedTable) return;
 
     try {
-      const response = await tablesApi.updateTableStatus(selectedTable.id, 'available');
+      const response = await tablesApi.updateTableStatus(
+        selectedTable.id,
+        "available"
+      );
       if (response.data.success) {
         await loadTables();
         setShowConfirmDialog(false);
-        showNotification(`Đã đóng ${selectedTable.name}`, 'success');
+        showNotification(`Đã đóng ${selectedTable.name}`, "success");
       } else {
-        showNotification('Không thể đóng bàn. Vui lòng thử lại.', 'error');
+        showNotification("Không thể đóng bàn. Vui lòng thử lại.", "error");
       }
     } catch (error) {
-      console.error('Error closing table:', error);
-      showNotification('Có lỗi xảy ra khi đóng bàn', 'error');
+      console.error("Error closing table:", error);
+      showNotification("Có lỗi xảy ra khi đóng bàn", "error");
     }
   };
 
@@ -236,9 +245,9 @@ const AdminTables: React.FC = () => {
 
   const resetForm = () => {
     setTableForm({
-      name: '',
+      name: "",
       floor: 1,
-      status: 'available'
+      status: "available",
     });
     setFormErrors({});
   };
@@ -253,7 +262,7 @@ const AdminTables: React.FC = () => {
     setTableForm({
       name: table.name,
       floor: table.floor || 1,
-      status: table.status
+      status: table.status,
     });
     setFormErrors({});
     setShowEditModal(true);
@@ -266,44 +275,44 @@ const AdminTables: React.FC = () => {
 
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
-    
+
     if (!tableForm.name.trim()) {
-      errors.name = 'Tên bàn không được để trống';
+      errors.name = "Tên bàn không được để trống";
     }
-    
+
     if (tableForm.floor < 1) {
-      errors.floor = 'Tầng phải là số dương';
+      errors.floor = "Tầng phải là số dương";
     }
-    
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
   const handleSubmitCreate = async () => {
     if (!validateForm()) return;
-    
+
     try {
       setSubmitting(true);
       const response = await tablesApi.createTable({
         name: tableForm.name.trim(),
         floor: tableForm.floor,
-        status: tableForm.status
+        status: tableForm.status,
       });
-      
+
       if (response.data.success) {
         await loadTables();
         setShowCreateModal(false);
         resetForm();
-        showNotification('Tạo bàn thành công!', 'success');
+        showNotification("Tạo bàn thành công!", "success");
       } else {
-        showNotification('Không thể tạo bàn. Vui lòng thử lại.', 'error');
+        showNotification("Không thể tạo bàn. Vui lòng thử lại.", "error");
       }
     } catch (error: any) {
-      console.error('Error creating table:', error);
+      console.error("Error creating table:", error);
       if (error.response?.data?.errors) {
         setFormErrors(error.response.data.errors);
       } else {
-        showNotification('Có lỗi xảy ra khi tạo bàn', 'error');
+        showNotification("Có lỗi xảy ra khi tạo bàn", "error");
       }
     } finally {
       setSubmitting(false);
@@ -312,30 +321,30 @@ const AdminTables: React.FC = () => {
 
   const handleSubmitEdit = async () => {
     if (!validateForm() || !tableToEdit) return;
-    
+
     try {
       setSubmitting(true);
       const response = await tablesApi.updateTable(tableToEdit.id, {
         name: tableForm.name.trim(),
         floor: tableForm.floor,
-        status: tableForm.status
+        status: tableForm.status,
       });
-      
+
       if (response.data.success) {
         await loadTables();
         setShowEditModal(false);
         setTableToEdit(null);
         resetForm();
-        showNotification('Cập nhật bàn thành công!', 'success');
+        showNotification("Cập nhật bàn thành công!", "success");
       } else {
-        showNotification('Không thể cập nhật bàn. Vui lòng thử lại.', 'error');
+        showNotification("Không thể cập nhật bàn. Vui lòng thử lại.", "error");
       }
     } catch (error: any) {
-      console.error('Error updating table:', error);
+      console.error("Error updating table:", error);
       if (error.response?.data?.errors) {
         setFormErrors(error.response.data.errors);
       } else {
-        showNotification('Có lỗi xảy ra khi cập nhật bàn', 'error');
+        showNotification("Có lỗi xảy ra khi cập nhật bàn", "error");
       }
     } finally {
       setSubmitting(false);
@@ -344,30 +353,30 @@ const AdminTables: React.FC = () => {
 
   const handleConfirmDelete = async () => {
     if (!tableToDelete) return;
-    
+
     try {
       const response = await tablesApi.deleteTable(tableToDelete.id);
-      
+
       // Sửa logic kiểm tra thành công
       if (response.status === 204 || (response.data && response.data.success)) {
         await loadTables();
         setShowDeleteConfirm(false);
         setTableToDelete(null);
-        showNotification('Xóa bàn thành công!', 'success');
+        showNotification("Xóa bàn thành công!", "success");
       } else {
-        showNotification('Không thể xóa bàn. Vui lòng thử lại.', 'error');
+        showNotification("Không thể xóa bàn. Vui lòng thử lại.", "error");
       }
     } catch (error: any) {
-      console.error('Error deleting table:', error);
-      
+      console.error("Error deleting table:", error);
+
       // Kiểm tra nếu là 204 No Content thì coi như thành công
       if (error.response?.status === 204) {
         await loadTables();
         setShowDeleteConfirm(false);
         setTableToDelete(null);
-        showNotification('Xóa bàn thành công!', 'success');
+        showNotification("Xóa bàn thành công!", "success");
       } else {
-        showNotification('Có lỗi xảy ra khi xóa bàn', 'error');
+        showNotification("Có lỗi xảy ra khi xóa bàn", "error");
       }
     }
   };
@@ -375,7 +384,10 @@ const AdminTables: React.FC = () => {
   if (loading) {
     return (
       <AdminLayout>
-        <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '400px' }}>
+        <div
+          className="d-flex justify-content-center align-items-center"
+          style={{ minHeight: "400px" }}
+        >
           <div className="spinner-border text-primary" role="status">
             <span className="visually-hidden">Đang tải...</span>
           </div>
@@ -401,14 +413,11 @@ const AdminTables: React.FC = () => {
         </div>
 
         <div className="d-flex gap-2">
-          <button 
-            className="btn btn-success"
-            onClick={handleCreateTable}
-          >
+          <button className="btn btn-success" onClick={handleCreateTable}>
             <i className="bi bi-plus me-1"></i>
             Tạo bàn mới
           </button>
-          <button 
+          <button
             className="btn btn-outline-primary"
             onClick={handleRefresh}
             disabled={loading}
@@ -418,7 +427,7 @@ const AdminTables: React.FC = () => {
           </button>
         </div>
       </div>
-        
+
       {/* Error Alert */}
       {error && (
         <div className="alert alert-danger alert-dismissible">
@@ -452,10 +461,7 @@ const AdminTables: React.FC = () => {
           currentTables.map(table => (
             <div key={table.id} className="col-6 col-md-4 col-lg-3 mb-3">
               <div className="position-relative">
-                <TableCard 
-                  table={table} 
-                  onSelect={handleTableSelect} 
-                />
+                <TableCard table={table} onSelect={handleTableSelect} />
                 {/* Admin Actions Menu */}
                 <div className="position-absolute top-0 end-0 p-2">
                   <div className="dropdown">
@@ -471,7 +477,7 @@ const AdminTables: React.FC = () => {
                       <li>
                         <button
                           className="dropdown-item"
-                          onClick={(e) => {
+                          onClick={e => {
                             e.stopPropagation();
                             handleEditTable(table);
                           }}
@@ -483,11 +489,11 @@ const AdminTables: React.FC = () => {
                       <li>
                         <button
                           className="dropdown-item text-danger"
-                          onClick={(e) => {
+                          onClick={e => {
                             e.stopPropagation();
                             handleDeleteTable(table);
                           }}
-                          disabled={table.status === 'unavailable'}
+                          disabled={table.status === "unavailable"}
                         >
                           <i className="bi bi-trash me-2"></i>
                           Xóa bàn
@@ -504,16 +510,16 @@ const AdminTables: React.FC = () => {
             <div className="text-center py-5">
               <i className="bi bi-grid-3x3 fs-1 text-muted mb-3"></i>
               <h5 className="text-muted">
-                {activeFloor === null 
-                  ? 'Không có bàn nào trong hệ thống'
-                  : `Không có bàn nào trong ${floors.find(f => f.id === activeFloor)?.name}`
-                }
+                {activeFloor === null
+                  ? "Không có bàn nào trong hệ thống"
+                  : `Không có bàn nào trong ${
+                      floors.find(f => f.id === activeFloor)?.name
+                    }`}
               </h5>
               <p className="text-muted">
-                {activeFloor === null 
-                  ? 'Vui lòng liên hệ quản trị viên để thêm bàn mới.'
-                  : 'Vui lòng chọn tầng khác hoặc liên hệ quản trị viên.'
-                }
+                {activeFloor === null
+                  ? "Vui lòng liên hệ quản trị viên để thêm bàn mới."
+                  : "Vui lòng chọn tầng khác hoặc liên hệ quản trị viên."}
               </p>
             </div>
           </div>
@@ -540,7 +546,7 @@ const AdminTables: React.FC = () => {
       <MenuSelection
         isOpen={showMenuSelection}
         tableId={selectedTable?.id || 0}
-        tableName={selectedTable?.name || ''}
+        tableName={selectedTable?.name || ""}
         onClose={() => setShowMenuSelection(false)}
         onOrderCreated={handleOrderCreated}
       />
@@ -559,8 +565,8 @@ const AdminTables: React.FC = () => {
       {/* Confirm Dialog */}
       <ConfirmDialog
         isOpen={showConfirmDialog}
-        title={confirmAction?.title || ''}
-        message={confirmAction?.message || ''}
+        title={confirmAction?.title || ""}
+        message={confirmAction?.message || ""}
         confirmText="Xác nhận"
         cancelText="Hủy"
         onConfirm={() => {
@@ -598,36 +604,55 @@ const AdminTables: React.FC = () => {
                     <label className="form-label">Tên bàn *</label>
                     <input
                       type="text"
-                      className={`form-control ${formErrors.name ? 'is-invalid' : ''}`}
+                      className={`form-control ${
+                        formErrors.name ? "is-invalid" : ""
+                      }`}
                       value={tableForm.name}
-                      onChange={(e) => setTableForm(prev => ({ ...prev, name: e.target.value }))}
+                      onChange={e =>
+                        setTableForm(prev => ({
+                          ...prev,
+                          name: e.target.value,
+                        }))
+                      }
                       placeholder="Ví dụ: Bàn 1, Bàn VIP A..."
                     />
                     {formErrors.name && (
                       <div className="invalid-feedback">{formErrors.name}</div>
                     )}
                   </div>
-                  
+
                   <div className="mb-3">
                     <label className="form-label">Tầng *</label>
                     <input
                       type="number"
-                      className={`form-control ${formErrors.floor ? 'is-invalid' : ''}`}
+                      className={`form-control ${
+                        formErrors.floor ? "is-invalid" : ""
+                      }`}
                       value={tableForm.floor}
-                      onChange={(e) => setTableForm(prev => ({ ...prev, floor: parseInt(e.target.value) || 1 }))}
+                      onChange={e =>
+                        setTableForm(prev => ({
+                          ...prev,
+                          floor: parseInt(e.target.value) || 1,
+                        }))
+                      }
                       min="1"
                     />
                     {formErrors.floor && (
                       <div className="invalid-feedback">{formErrors.floor}</div>
                     )}
                   </div>
-                  
+
                   <div className="mb-3">
                     <label className="form-label">Trạng thái</label>
                     <select
                       className="form-select"
                       value={tableForm.status}
-                      onChange={(e) => setTableForm(prev => ({ ...prev, status: e.target.value as 'available' | 'unavailable' }))}
+                      onChange={e =>
+                        setTableForm(prev => ({
+                          ...prev,
+                          status: e.target.value as "available" | "unavailable",
+                        }))
+                      }
                     >
                       <option value="available">Có sẵn</option>
                       <option value="unavailable">Đang sử dụng</option>
@@ -696,36 +721,55 @@ const AdminTables: React.FC = () => {
                     <label className="form-label">Tên bàn *</label>
                     <input
                       type="text"
-                      className={`form-control ${formErrors.name ? 'is-invalid' : ''}`}
+                      className={`form-control ${
+                        formErrors.name ? "is-invalid" : ""
+                      }`}
                       value={tableForm.name}
-                      onChange={(e) => setTableForm(prev => ({ ...prev, name: e.target.value }))}
+                      onChange={e =>
+                        setTableForm(prev => ({
+                          ...prev,
+                          name: e.target.value,
+                        }))
+                      }
                       placeholder="Ví dụ: Bàn 1, Bàn VIP A..."
                     />
                     {formErrors.name && (
                       <div className="invalid-feedback">{formErrors.name}</div>
                     )}
                   </div>
-                  
+
                   <div className="mb-3">
                     <label className="form-label">Tầng *</label>
                     <input
                       type="number"
-                      className={`form-control ${formErrors.floor ? 'is-invalid' : ''}`}
+                      className={`form-control ${
+                        formErrors.floor ? "is-invalid" : ""
+                      }`}
                       value={tableForm.floor}
-                      onChange={(e) => setTableForm(prev => ({ ...prev, floor: parseInt(e.target.value) || 1 }))}
+                      onChange={e =>
+                        setTableForm(prev => ({
+                          ...prev,
+                          floor: parseInt(e.target.value) || 1,
+                        }))
+                      }
                       min="1"
                     />
                     {formErrors.floor && (
                       <div className="invalid-feedback">{formErrors.floor}</div>
                     )}
                   </div>
-                  
+
                   <div className="mb-3">
                     <label className="form-label">Trạng thái</label>
                     <select
                       className="form-select"
                       value={tableForm.status}
-                      onChange={(e) => setTableForm(prev => ({ ...prev, status: e.target.value as 'available' | 'unavailable' }))}
+                      onChange={e =>
+                        setTableForm(prev => ({
+                          ...prev,
+                          status: e.target.value as "available" | "unavailable",
+                        }))
+                      }
                     >
                       <option value="available">Có sẵn</option>
                       <option value="unavailable">Đang sử dụng</option>
@@ -793,11 +837,12 @@ const AdminTables: React.FC = () => {
                   <i className="bi bi-exclamation-triangle me-2"></i>
                   <strong>Cảnh báo:</strong> Hành động này không thể hoàn tác!
                 </div>
-                
+
                 <p>
-                  Bạn có chắc chắn muốn xóa <strong>{tableToDelete.name}</strong> không?
+                  Bạn có chắc chắn muốn xóa{" "}
+                  <strong>{tableToDelete.name}</strong> không?
                 </p>
-                
+
                 <div className="bg-light p-3 rounded">
                   <div className="row">
                     <div className="col-6">
@@ -839,7 +884,6 @@ const AdminTables: React.FC = () => {
       {showCreateModal || showEditModal || showDeleteConfirm ? (
         <div className="modal-backdrop show"></div>
       ) : null}
-
     </AdminLayout>
   );
 };

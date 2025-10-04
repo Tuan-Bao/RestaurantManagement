@@ -66,6 +66,7 @@ export interface OrderItem {
   order_id: number;
   menu_item_id: number;
   menu_item?: MenuItem;
+  // menu_item?: number;
   menu_item_name: string;
   user_id: number;
   quantity: number;

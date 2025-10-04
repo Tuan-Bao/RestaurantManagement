@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { ordersApi } from '../../services/orders';
-import ConfirmDialog from './ConfirmDialog';
-import type { Table, Order, OrderItem } from '../../types/restaurant';
-import { tablesApi } from '../../services/tables';
+import React, { useState, useEffect } from "react";
+import { ordersApi } from "../../services/orders";
+import ConfirmDialog from "./ConfirmDialog";
+import type { Table, Order, OrderItem } from "../../types/restaurant";
+import { tablesApi } from "../../services/tables";
 // @ts-ignore
-import { useNotification } from '../../contexts/NotificationContext';
+import { useNotification } from "../../contexts/NotificationContext";
 
 interface TableOrderModalProps {
   table: Table | null;
@@ -29,14 +29,16 @@ const TableOrderModal: React.FC<TableOrderModalProps> = ({
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Confirm dialog states
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<OrderItem | null>(null);
   const [showTableChangeModal, setShowTableChangeModal] = useState(false);
   const [availableTables, setAvailableTables] = useState<Table[]>([]);
-  const [selectedTargetTable, setSelectedTargetTable] = useState<number | null>(null);
-  
+  const [selectedTargetTable, setSelectedTargetTable] = useState<number | null>(
+    null
+  );
+
   // Load order data when modal opens
   useEffect(() => {
     if (isOpen && table) {
@@ -46,43 +48,90 @@ const TableOrderModal: React.FC<TableOrderModalProps> = ({
 
   const loadOrderData = async () => {
     if (!table) return;
-    
+
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await ordersApi.getOrderByTable(table.id);
       if (response.data.success) {
         setOrder(response.data.data);
       } else {
-        setError('Không thể tải thông tin đơn hàng');
+        setError("Không thể tải thông tin đơn hàng");
       }
     } catch (err) {
-      console.error('Error loading order:', err);
-      setError('Có lỗi xảy ra khi tải đơn hàng');
+      console.error("Error loading order:", err);
+      setError("Có lỗi xảy ra khi tải đơn hàng");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleItemStatusChange = async (itemId: number, newStatus: OrderItem['status']) => {
+  const handleItemStatusChange = async (
+    itemId: number,
+    newStatus: OrderItem["status"]
+  ) => {
     try {
       const response = await ordersApi.updateOrderItemStatus(itemId, newStatus);
       if (response.data.success) {
         await loadOrderData();
-        showNotification('Cập nhật trạng thái thành công', 'success');
+        showNotification("Cập nhật trạng thái thành công", "success");
       } else {
-        showNotification('Không thể cập nhật trạng thái món ăn', 'error');
+        showNotification("Không thể cập nhật trạng thái món ăn", "error");
       }
     } catch (error) {
-      console.error('Error updating item status:', error);
-      showNotification('Có lỗi xảy ra khi cập nhật trạng thái', 'error');
+      console.error("Error updating item status:", error);
+      showNotification("Có lỗi xảy ra khi cập nhật trạng thái", "error");
     }
   };
 
   const handleDeleteItem = (item: OrderItem) => {
-    setItemToDelete(item);
-    setShowDeleteConfirm(true);
+    if (item.quantity > 1) {
+      // Nếu số lượng > 1, giảm số lượng đi 1
+      handleQuantityDecrease(item);
+    } else {
+      // Nếu số lượng = 1, xóa item hoàn toàn
+      setItemToDelete(item);
+      setShowDeleteConfirm(true);
+    }
+  };
+
+  const handleQuantityDecrease = async (item: OrderItem) => {
+    if (!order || !order.order_items) return;
+
+    try {
+      const newQuantity = item.quantity - 1;
+      // Tạo danh sách items mới với quantity đã giảm
+      const updatedItems = order.order_items.map(orderItem => {
+        if (orderItem.id === item.id) {
+          return {
+            menu_item: orderItem.menu_item,
+            quantity: newQuantity,
+            note: orderItem.note || "",
+          };
+        }
+        return {
+          menu_item: orderItem.menu_item,
+          quantity: orderItem.quantity,
+          note: orderItem.note || "",
+        };
+      });
+      // console.log(updatedItems);
+      const response = await ordersApi.updateOrderItems(order.id, updatedItems);
+
+      if (response.data.success) {
+        await loadOrderData();
+        showNotification(
+          `Giảm số lượng ${item.menu_item_name} thành công`,
+          "success"
+        );
+      } else {
+        showNotification("Không thể cập nhật số lượng món ăn", "error");
+      }
+    } catch (error) {
+      console.error("Error updating item quantity:", error);
+      showNotification("Có lỗi xảy ra khi cập nhật số lượng", "error");
+    }
   };
 
   const confirmDeleteItem = async () => {
@@ -90,39 +139,39 @@ const TableOrderModal: React.FC<TableOrderModalProps> = ({
 
     try {
       const response = await ordersApi.deleteOrderItem(itemToDelete.id);
-      
+
       if (response.status === 204 || (response.data && response.data.success)) {
         await loadOrderData();
         setShowDeleteConfirm(false);
         setItemToDelete(null);
-        showNotification('Xóa món thành công', 'success');
+        showNotification("Xóa món thành công", "success");
       } else {
-        showNotification('Không thể xóa món ăn', 'error');
+        showNotification("Không thể xóa món ăn", "error");
       }
     } catch (error: any) {
-      console.error('Error deleting item:', error);
-      
+      console.error("Error deleting item:", error);
+
       if (error.response?.status === 204) {
         await loadOrderData();
         setShowDeleteConfirm(false);
         setItemToDelete(null);
-        showNotification('Xóa món thành công', 'success');
+        showNotification("Xóa món thành công", "success");
       } else {
-        showNotification('Có lỗi xảy ra khi xóa món ăn', 'error');
+        showNotification("Có lỗi xảy ra khi xóa món ăn", "error");
       }
     }
   };
 
   const loadAvailableTables = async () => {
     try {
-      const response = await tablesApi.getTables({ status: 'available' });
+      const response = await tablesApi.getTables({ status: "available" });
       if (response.data.success) {
         // Loại bỏ bàn hiện tại khỏi danh sách
         const tables = response.data.data.filter(t => t.id !== table?.id);
         setAvailableTables(tables);
       }
     } catch (error) {
-      console.error('Error loading available tables:', error);
+      console.error("Error loading available tables:", error);
     }
   };
 
@@ -137,7 +186,7 @@ const TableOrderModal: React.FC<TableOrderModalProps> = ({
     try {
       const response = await tablesApi.changeTable({
         from_table_id: table.id,
-        to_table_id: selectedTargetTable
+        to_table_id: selectedTargetTable,
       });
 
       if (response.data.success) {
@@ -146,30 +195,33 @@ const TableOrderModal: React.FC<TableOrderModalProps> = ({
         if (onTableChanged) {
           onTableChanged();
         }
-        showNotification('Chuyển bàn thành công!', 'success');
+        showNotification("Chuyển bàn thành công!", "success");
         onClose();
       } else {
-        showNotification('Không thể chuyển bàn. Vui lòng thử lại.', 'error');
+        showNotification("Không thể chuyển bàn. Vui lòng thử lại.", "error");
       }
     } catch (error) {
-      console.error('Error changing table:', error);
-      showNotification('Có lỗi xảy ra khi chuyển bàn', 'error');
+      console.error("Error changing table:", error);
+      showNotification("Có lỗi xảy ra khi chuyển bàn", "error");
     }
   };
 
   if (!isOpen || !table) return null;
 
-  const getStatusBadge = (status: OrderItem['status']) => {
+  const getStatusBadge = (status: OrderItem["status"]) => {
     const statusConfig = {
-      ordered: { color: 'warning', text: 'Đã đặt' },
-      cooking: { color: 'info', text: 'Đang nấu' },
-      done: { color: 'success', text: 'Hoàn thành' },
-      cancel: { color: 'danger', text: 'Đã hủy' }
+      ordered: { color: "warning", text: "Đã đặt" },
+      cooking: { color: "info", text: "Đang nấu" },
+      done: { color: "success", text: "Hoàn thành" },
+      cancelled: { color: "danger", text: "Đã hủy" },
     };
     return statusConfig[status] || statusConfig.ordered;
   };
 
-  const totalAmount = order?.order_items?.reduce((sum, item) => sum + (item.quantity * item.price_each), 0) || 0;
+  const totalAmount =
+    order?.order_items
+      ?.filter(item => item.status === "done")
+      ?.reduce((sum, item) => sum + item.quantity * item.price_each, 0) || 0;
 
   return (
     <>
@@ -197,10 +249,8 @@ const TableOrderModal: React.FC<TableOrderModalProps> = ({
                     <strong>Tầng:</strong> {table.floor}
                   </div>
                   <div className="col-6">
-                    <strong>Trạng thái:</strong> 
-                    <span className="badge bg-danger ms-2">
-                      Đang phục vụ
-                    </span>
+                    <strong>Trạng thái:</strong>
+                    <span className="badge bg-danger ms-2">Đang phục vụ</span>
                   </div>
                 </div>
               </div>
@@ -225,7 +275,9 @@ const TableOrderModal: React.FC<TableOrderModalProps> = ({
               {/* Orders List */}
               {!loading && !error && (
                 <>
-                  {order && order.order_items && order.order_items.length > 0 ? (
+                  {order &&
+                  order.order_items &&
+                  order.order_items.length > 0 ? (
                     <div className="table-responsive">
                       <table className="table table-hover">
                         <thead className="table-light">
@@ -247,7 +299,8 @@ const TableOrderModal: React.FC<TableOrderModalProps> = ({
                                 <td>
                                   <div>
                                     <strong>
-                                      {item.menu_item_name || `Menu Item ID: ${item.menu_item}`}
+                                      {item.menu_item_name ||
+                                        `Menu Item ID: ${item.menu_item}`}
                                     </strong>
                                     {item.note && (
                                       <div>
@@ -261,22 +314,25 @@ const TableOrderModal: React.FC<TableOrderModalProps> = ({
                                 </td>
                                 <td className="text-center">{item.quantity}</td>
                                 <td className="text-end">
-                                  {item.price_each.toLocaleString('vi-VN')}đ
+                                  {item.price_each.toLocaleString("vi-VN")}đ
                                 </td>
                                 <td className="text-end">
                                   <strong>
-                                    {itemTotal.toLocaleString('vi-VN')}đ
+                                    {itemTotal.toLocaleString("vi-VN")}đ
                                   </strong>
                                 </td>
                                 <td className="text-center">
-                                  <span className={`badge bg-${statusInfo.color}`}>
+                                  <span
+                                    className={`badge bg-${statusInfo.color}`}
+                                  >
                                     {statusInfo.text}
                                   </span>
                                 </td>
                                 <td className="text-center">
                                   <div className="btn-group">
                                     {/* Status change buttons */}
-                                    {item.status === 'ordered' && (
+                                    {(item.status === "ordered" ||
+                                      item.status === "cancelled") && (
                                       <>
                                         {/* <button
                                           className="btn btn-sm btn-outline-info"
@@ -288,9 +344,21 @@ const TableOrderModal: React.FC<TableOrderModalProps> = ({
                                         <button
                                           className="btn btn-sm btn-outline-danger"
                                           onClick={() => handleDeleteItem(item)}
-                                          title="Xóa món"
+                                          title={
+                                            item.quantity > 1
+                                              ? `Giảm số lượng (${
+                                                  item.quantity
+                                                } → ${item.quantity - 1})`
+                                              : "Xóa món"
+                                          }
                                         >
-                                          <i className="bi bi-trash"></i>
+                                          <i
+                                            className={
+                                              item.quantity > 1
+                                                ? "bi bi-dash"
+                                                : "bi bi-trash"
+                                            }
+                                          ></i>
                                         </button>
                                       </>
                                     )}
@@ -311,10 +379,12 @@ const TableOrderModal: React.FC<TableOrderModalProps> = ({
                         </tbody>
                         <tfoot className="table-light">
                           <tr>
-                            <td colSpan={3}><strong>Tổng cộng:</strong></td>
+                            <td colSpan={3}>
+                              <strong>Tổng cộng:</strong>
+                            </td>
                             <td className="text-end">
                               <strong className="fs-5 text-primary">
-                                {totalAmount.toLocaleString('vi-VN')}đ
+                                {totalAmount.toLocaleString("vi-VN")}đ
                               </strong>
                             </td>
                             <td colSpan={2}></td>
@@ -340,7 +410,7 @@ const TableOrderModal: React.FC<TableOrderModalProps> = ({
               >
                 Đóng
               </button>
-              
+
               <button
                 type="button"
                 className="btn btn-success"
@@ -361,7 +431,7 @@ const TableOrderModal: React.FC<TableOrderModalProps> = ({
                     <i className="bi bi-arrow-right me-1"></i>
                     Chuyển bàn
                   </button>
-                  
+
                   <button
                     type="button"
                     className="btn btn-warning"
@@ -388,12 +458,14 @@ const TableOrderModal: React.FC<TableOrderModalProps> = ({
           </div>
         </div>
       </div>
-      
+
       {/* Delete Confirm Dialog */}
       <ConfirmDialog
         isOpen={showDeleteConfirm}
         title="Xóa món ăn"
-        message={`Bạn có chắc chắn muốn xóa "${itemToDelete?.menu_item?.name || 'món ăn này'}" không?`}
+        message={`Bạn có chắc chắn muốn xóa "${
+          itemToDelete?.menu_item?.name || "món ăn này"
+        }" không?`}
         confirmText="Xóa"
         cancelText="Hủy"
         onConfirm={confirmDeleteItem}
@@ -405,7 +477,11 @@ const TableOrderModal: React.FC<TableOrderModalProps> = ({
 
       {/* Table Change Modal */}
       {showTableChangeModal && (
-        <div className="modal show d-block" tabIndex={-1} style={{ zIndex: 1060 }}>
+        <div
+          className="modal show d-block"
+          tabIndex={-1}
+          style={{ zIndex: 1060 }}
+        >
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
@@ -414,6 +490,7 @@ const TableOrderModal: React.FC<TableOrderModalProps> = ({
                   Chuyển bàn
                 </h5>
                 <button
+                  aria-label="Close"
                   type="button"
                   className="btn-close"
                   onClick={() => {
@@ -426,16 +503,20 @@ const TableOrderModal: React.FC<TableOrderModalProps> = ({
                 <div className="alert alert-info">
                   <small>
                     <i className="bi bi-info-circle me-1"></i>
-                    Chuyển tất cả món từ <strong>{table?.name}</strong> sang bàn khác
+                    Chuyển tất cả món từ <strong>{table?.name}</strong> sang bàn
+                    khác
                   </small>
                 </div>
-                
+
                 <div className="mb-3">
                   <label className="form-label">Chọn bàn đích:</label>
-                  <select 
+                  <select
+                    aria-label="Select target table"
                     className="form-select"
-                    value={selectedTargetTable || ''}
-                    onChange={(e) => setSelectedTargetTable(Number(e.target.value))}
+                    value={selectedTargetTable || ""}
+                    onChange={e =>
+                      setSelectedTargetTable(Number(e.target.value))
+                    }
                   >
                     <option value="">-- Chọn bàn --</option>
                     {availableTables.map(availableTable => (
@@ -445,7 +526,7 @@ const TableOrderModal: React.FC<TableOrderModalProps> = ({
                     ))}
                   </select>
                 </div>
-                
+
                 {availableTables.length === 0 && (
                   <div className="alert alert-warning">
                     <small>Không có bàn trống để chuyển</small>
@@ -477,7 +558,7 @@ const TableOrderModal: React.FC<TableOrderModalProps> = ({
           </div>
         </div>
       )}
-      
+
       <div className="modal-backdrop show"></div>
     </>
   );
@@ -485,8 +566,7 @@ const TableOrderModal: React.FC<TableOrderModalProps> = ({
 
 export default TableOrderModal;
 
-
-// Thêm hiệu ứng nma lười quá 
+// Thêm hiệu ứng nma lười quá
 // const [tableChangeLoading, setTableChangeLoading] = useState(false);
 
 // const handleTableChange = async () => {
@@ -503,11 +583,11 @@ export default TableOrderModal;
 //       alert('Chuyển bàn thành công!');
 //       setShowTableChangeModal(false);
 //       setSelectedTargetTable(null);
-      
+
 //       if (onTableChanged) {
 //         onTableChanged();
 //       }
-      
+
 //       onClose();
 //     } else {
 //       alert('Không thể chuyển bàn. Vui lòng thử lại.');
