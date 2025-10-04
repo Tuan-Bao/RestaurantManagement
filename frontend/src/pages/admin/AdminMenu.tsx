@@ -272,16 +272,33 @@ const AdminMenu: React.FC = () => {
         return;
       }
 
-      // Convert to API format
-      const apiData = validRecipes.map(item => ({
-        ingredient: item.ingredient_id,
-        quantity_required: parseFloat(item.quantity_required),
-      }));
+      let response;
 
-      const response = await menuApi.addIngredients(
-        selectedItemForRecipe.id,
-        apiData
-      );
+      // Check if there are existing recipes
+      if (currentRecipes.length === 0) {
+        // No existing recipes - use addIngredients API
+        const apiData = validRecipes.map(item => ({
+          ingredient: item.ingredient_id,
+          quantity_required: parseFloat(item.quantity_required),
+        }));
+
+        response = await menuApi.addIngredients(
+          selectedItemForRecipe.id,
+          apiData
+        );
+      } else {
+        // Has existing recipes - use updateIngredientsInBulk API
+        const apiData = validRecipes.map(item => ({
+          ingredient: item.ingredient_id,
+          quantity_required: parseFloat(item.quantity_required),
+        }));
+
+        response = await menuApi.updateIngredientsInBulk(
+          selectedItemForRecipe.id,
+          apiData
+        );
+      }
+
       if (response.data.success) {
         setSuccessMessage("Cập nhật công thức thành công");
         setShowRecipeModal(false);
