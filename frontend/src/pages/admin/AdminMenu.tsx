@@ -12,57 +12,60 @@ const AdminMenu: React.FC = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  
+
   // Data states
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [filteredItems, setFilteredItems] = useState<MenuItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [currentRecipes, setCurrentRecipes] = useState<Recipe[]>([]);
-  
+
   // Filter states
   const [searchName, setSearchName] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<number | string>("");
   const [selectedStatus, setSelectedStatus] = useState<string>("");
-  
+
   // Modal states
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showMenuItemModal, setShowMenuItemModal] = useState(false);
   const [showRecipeModal, setShowRecipeModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  
+
   // Editing states
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editingMenuItem, setEditingMenuItem] = useState<MenuItem | null>(null);
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
-  const [selectedItemForRecipe, setSelectedItemForRecipe] = useState<MenuItem | null>(null);
-  
+  const [selectedItemForRecipe, setSelectedItemForRecipe] =
+    useState<MenuItem | null>(null);
+
   // Form states
   const [categoryForm, setCategoryForm] = useState({
     name: "",
-    description: ""
+    description: "",
   });
-  
+
   const [menuItemForm, setMenuItemForm] = useState({
     name: "",
     description: "",
     price: "",
     category: "",
     status: "available",
-    image: null as File | null
+    image: null as File | null,
   });
-  
-  const [recipeItems, setRecipeItems] = useState<{
-    ingredient_id: number;
-    quantity_required: string;
-  }[]>([]);
+
+  const [recipeItems, setRecipeItems] = useState<
+    {
+      ingredient_id: number;
+      quantity_required: string;
+    }[]
+  >([]);
 
   // Statistics
   const [stats, setStats] = useState({
     total: 0,
     available: 0,
     unavailable: 0,
-    categories: 0
+    categories: 0,
   });
 
   // Load data on component mount
@@ -82,29 +85,33 @@ const AdminMenu: React.FC = () => {
       if (showLoadingSpinner) {
         setLoading(true);
       }
-      
+
       const [categoriesRes, itemsRes] = await Promise.all([
         menuApi.getCategories(),
-        menuApi.getMenuItems()
+        menuApi.getMenuItems(),
       ]);
 
       if (categoriesRes.data.success && itemsRes.data.success) {
         const categoriesData = categoriesRes.data.data;
         const menuItemsData = itemsRes.data.data;
-        
+
         setCategories(categoriesData);
         setMenuItems(menuItemsData);
         setFilteredItems(menuItemsData);
-        
+
         // Calculate statistics
-        const availableCount = menuItemsData.filter(item => item.status === "available").length;
-        const unavailableCount = menuItemsData.filter(item => item.status === "unavailable").length;
-        
+        const availableCount = menuItemsData.filter(
+          item => item.status === "available"
+        ).length;
+        const unavailableCount = menuItemsData.filter(
+          item => item.status === "unavailable"
+        ).length;
+
         setStats({
           total: menuItemsData.length,
           available: availableCount,
           unavailable: unavailableCount,
-          categories: categoriesData.length
+          categories: categoriesData.length,
         });
       } else {
         setError("Không thể tải dữ liệu menu");
@@ -126,7 +133,7 @@ const AdminMenu: React.FC = () => {
         setIngredients(response.data);
       }
     } catch (err: any) {
-      console.error('Failed to load ingredients:', err);
+      console.error("Failed to load ingredients:", err);
     }
   };
 
@@ -139,20 +146,23 @@ const AdminMenu: React.FC = () => {
         // Convert recipes to form format
         const formRecipes = response.data.data.map(recipe => ({
           ingredient_id: recipe.ingredient,
-          quantity_required: recipe.quantity_required?.toString() || ""
+          quantity_required: recipe.quantity_required?.toString() || "",
         }));
         setRecipeItems(formRecipes);
       }
     } catch (err: any) {
-      console.error('Failed to load recipes:', err);
+      console.error("Failed to load recipes:", err);
       setCurrentRecipes([]);
       setRecipeItems([]);
     }
-  };  // Filter items
+  }; // Filter items
   const filterItems = () => {
     const filtered = menuItems.filter((item: MenuItem) => {
-      const matchesName = !searchName || item.name?.toLowerCase().includes(searchName.toLowerCase());
-      const matchesCategory = !selectedCategory || item.category === Number(selectedCategory);
+      const matchesName =
+        !searchName ||
+        item.name?.toLowerCase().includes(searchName.toLowerCase());
+      const matchesCategory =
+        !selectedCategory || item.category === Number(selectedCategory);
       const matchesStatus = !selectedStatus || item.status === selectedStatus;
       return matchesName && matchesCategory && matchesStatus;
     });
@@ -167,7 +177,10 @@ const AdminMenu: React.FC = () => {
 
     try {
       if (editingCategory) {
-        const response = await menuApi.updateCategory(editingCategory.id, categoryForm);
+        const response = await menuApi.updateCategory(
+          editingCategory.id,
+          categoryForm
+        );
         if (response.data.success) {
           setSuccessMessage("Cập nhật danh mục thành công");
         } else {
@@ -181,7 +194,7 @@ const AdminMenu: React.FC = () => {
           setError(response.data.message || "Thêm danh mục thất bại");
         }
       }
-      
+
       await loadData(false);
       resetCategoryForm();
       setShowCategoryModal(false);
@@ -192,7 +205,7 @@ const AdminMenu: React.FC = () => {
     }
   };
 
-  // Menu item handlers  
+  // Menu item handlers
   const handleMenuItemSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setActionLoading(true);
@@ -201,15 +214,18 @@ const AdminMenu: React.FC = () => {
     try {
       const formData = new FormData();
       Object.entries(menuItemForm).forEach(([key, value]) => {
-        if (key === 'image' && value) {
-          formData.append('image', value);
+        if (key === "image" && value) {
+          formData.append("image", value);
         } else if (value !== null) {
           formData.append(key, value.toString());
         }
       });
 
       if (editingMenuItem) {
-        const response = await menuApi.updateMenuItem(editingMenuItem.id, formData);
+        const response = await menuApi.updateMenuItem(
+          editingMenuItem.id,
+          formData
+        );
         if (response.data.success) {
           setSuccessMessage("Cập nhật món ăn thành công");
         } else {
@@ -223,7 +239,7 @@ const AdminMenu: React.FC = () => {
           setError(response.data.message || "Thêm món ăn thất bại");
         }
       }
-      
+
       await loadData(false);
       resetMenuItemForm();
       setShowMenuItemModal(false);
@@ -238,14 +254,17 @@ const AdminMenu: React.FC = () => {
   const handleRecipeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedItemForRecipe) return;
-    
+
     setActionLoading(true);
     setError(null);
 
     try {
       // Filter out empty recipes
-      const validRecipes = recipeItems.filter(item => 
-        item.ingredient_id && item.quantity_required && parseFloat(item.quantity_required) > 0
+      const validRecipes = recipeItems.filter(
+        item =>
+          item.ingredient_id &&
+          item.quantity_required &&
+          parseFloat(item.quantity_required) > 0
       );
 
       if (validRecipes.length === 0) {
@@ -256,10 +275,13 @@ const AdminMenu: React.FC = () => {
       // Convert to API format
       const apiData = validRecipes.map(item => ({
         ingredient: item.ingredient_id,
-        quantity_required: parseFloat(item.quantity_required)
+        quantity_required: parseFloat(item.quantity_required),
       }));
 
-      const response = await menuApi.addIngredients(selectedItemForRecipe.id, apiData);
+      const response = await menuApi.addIngredients(
+        selectedItemForRecipe.id,
+        apiData
+      );
       if (response.data.success) {
         setSuccessMessage("Cập nhật công thức thành công");
         setShowRecipeModal(false);
@@ -276,14 +298,21 @@ const AdminMenu: React.FC = () => {
   };
 
   const addRecipeItem = () => {
-    setRecipeItems([...recipeItems, { ingredient_id: 0, quantity_required: "" }]);
+    setRecipeItems([
+      ...recipeItems,
+      { ingredient_id: 0, quantity_required: "" },
+    ]);
   };
 
   const removeRecipeItem = (index: number) => {
     setRecipeItems(recipeItems.filter((_, i) => i !== index));
   };
 
-  const updateRecipeItem = (index: number, field: string, value: string | number) => {
+  const updateRecipeItem = (
+    index: number,
+    field: string,
+    value: string | number
+  ) => {
     const updated = [...recipeItems];
     updated[index] = { ...updated[index], [field]: value };
     setRecipeItems(updated);
@@ -292,11 +321,11 @@ const AdminMenu: React.FC = () => {
   // Delete handlers
   const handleDeleteConfirm = async () => {
     if (!selectedItem) return;
-    
+
     setActionLoading(true);
     try {
       const response = await menuApi.deleteMenuItem(selectedItem.id);
-      
+
       // Handle both 200 and 204 responses
       if (response.status === 200 || response.status === 204) {
         const data = response.data;
@@ -312,7 +341,7 @@ const AdminMenu: React.FC = () => {
         setError("Xóa món ăn thất bại");
       }
     } catch (err: any) {
-      console.error('Delete error:', err);
+      console.error("Delete error:", err);
       setError(err.response?.data?.message || "Xóa món ăn thất bại");
     } finally {
       setActionLoading(false);
@@ -332,7 +361,7 @@ const AdminMenu: React.FC = () => {
       price: "",
       category: "",
       status: "available",
-      image: null
+      image: null,
     });
     setEditingMenuItem(null);
   };
@@ -343,7 +372,7 @@ const AdminMenu: React.FC = () => {
       setEditingCategory(category);
       setCategoryForm({
         name: category.name || "",
-        description: category.description || ""
+        description: category.description || "",
       });
     } else {
       resetCategoryForm();
@@ -360,7 +389,7 @@ const AdminMenu: React.FC = () => {
         price: item.price?.toString() || "",
         category: item.category?.toString() || "",
         status: item.status || "available",
-        image: null
+        image: null,
       });
     } else {
       resetMenuItemForm();
@@ -389,9 +418,9 @@ const AdminMenu: React.FC = () => {
 
   // Format price
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND'
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
     }).format(price);
   };
 
@@ -536,7 +565,7 @@ const AdminMenu: React.FC = () => {
                       className="form-control"
                       placeholder="Nhập tên món ăn..."
                       value={searchName}
-                      onChange={(e) => setSearchName(e.target.value)}
+                      onChange={e => setSearchName(e.target.value)}
                     />
                   </div>
                 </div>
@@ -546,7 +575,7 @@ const AdminMenu: React.FC = () => {
                   <select
                     className="form-select"
                     value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    onChange={e => setSelectedCategory(e.target.value)}
                   >
                     <option value="">Tất cả danh mục</option>
                     {categories.map(category => (
@@ -562,7 +591,7 @@ const AdminMenu: React.FC = () => {
                   <select
                     className="form-select"
                     value={selectedStatus}
-                    onChange={(e) => setSelectedStatus(e.target.value)}
+                    onChange={e => setSelectedStatus(e.target.value)}
                   >
                     <option value="">Tất cả trạng thái</option>
                     <option value="available">Có sẵn</option>
@@ -579,9 +608,14 @@ const AdminMenu: React.FC = () => {
               <div className="col-12">
                 <div className="card">
                   <div className="card-body text-center py-5">
-                    <i className="bi bi-journal-text text-muted" style={{ fontSize: '3rem' }}></i>
+                    <i
+                      className="bi bi-journal-text text-muted"
+                      style={{ fontSize: "3rem" }}
+                    ></i>
                     <h5 className="mt-3 text-muted">Không có món ăn nào</h5>
-                    <p className="text-muted">Hãy thêm món ăn đầu tiên cho menu của bạn</p>
+                    <p className="text-muted">
+                      Hãy thêm món ăn đầu tiên cho menu của bạn
+                    </p>
                     <button
                       className="btn btn-primary"
                       onClick={() => openMenuItemModal()}
@@ -593,7 +627,7 @@ const AdminMenu: React.FC = () => {
                 </div>
               </div>
             ) : (
-              filteredItems.map((item) => (
+              filteredItems.map(item => (
                 <div key={item.id} className="col-lg-4 col-md-6 mb-4">
                   <div className="card h-100 shadow-sm">
                     {item.image_url && (
@@ -601,28 +635,34 @@ const AdminMenu: React.FC = () => {
                         src={item.image_url}
                         className="card-img-top"
                         alt={item.name}
-                        style={{ height: '200px', objectFit: 'cover' }}
+                        style={{ height: "200px", objectFit: "cover" }}
                       />
                     )}
                     <div className="card-body d-flex flex-column">
                       <div className="d-flex justify-content-between align-items-start mb-2">
                         <h5 className="card-title mb-0">{item.name}</h5>
-                        <span className={`badge ${item.status === 'available' ? 'bg-success' : 'bg-warning'}`}>
-                          {item.status === 'available' ? 'Có sẵn' : 'Hết món'}
+                        <span
+                          className={`badge ${
+                            item.status === "available"
+                              ? "bg-success"
+                              : "bg-warning"
+                          }`}
+                        >
+                          {item.status === "available" ? "Có sẵn" : "Hết món"}
                         </span>
                       </div>
-                      
+
                       <p className="text-muted small mb-2">
                         <i className="bi bi-list me-1"></i>
                         {item.category_name || getCategoryName(item.category)}
                       </p>
-                      
+
                       {item.description && (
                         <p className="card-text text-muted small flex-grow-1">
                           {item.description}
                         </p>
                       )}
-                      
+
                       <div className="d-flex justify-content-between align-items-center mt-auto">
                         <div className="h5 text-primary mb-0">
                           {formatPrice(item.price || 0)}
@@ -667,7 +707,7 @@ const AdminMenu: React.FC = () => {
                     <div className="modal-header">
                       <h5 className="modal-title">
                         <i className="bi bi-list me-2"></i>
-                        {editingCategory ? 'Sửa danh mục' : 'Thêm danh mục'}
+                        {editingCategory ? "Sửa danh mục" : "Thêm danh mục"}
                       </h5>
                       <button
                         type="button"
@@ -685,7 +725,12 @@ const AdminMenu: React.FC = () => {
                               className="form-control"
                               placeholder="Nhập tên danh mục (ví dụ: Món chính, Tráng miệng, Đồ uống...)"
                               value={categoryForm.name}
-                              onChange={(e) => setCategoryForm({...categoryForm, name: e.target.value})}
+                              onChange={e =>
+                                setCategoryForm({
+                                  ...categoryForm,
+                                  name: e.target.value,
+                                })
+                              }
                               required
                             />
                           </div>
@@ -700,10 +745,16 @@ const AdminMenu: React.FC = () => {
                               rows={4}
                               placeholder="Mô tả chi tiết về danh mục này..."
                               value={categoryForm.description}
-                              onChange={(e) => setCategoryForm({...categoryForm, description: e.target.value})}
+                              onChange={e =>
+                                setCategoryForm({
+                                  ...categoryForm,
+                                  description: e.target.value,
+                                })
+                              }
                             ></textarea>
                             <div className="form-text">
-                              Mô tả sẽ giúp khách hàng hiểu rõ hơn về loại món ăn trong danh mục này
+                              Mô tả sẽ giúp khách hàng hiểu rõ hơn về loại món
+                              ăn trong danh mục này
                             </div>
                           </div>
                         </div>
@@ -723,9 +774,11 @@ const AdminMenu: React.FC = () => {
                         className="btn btn-primary"
                         disabled={actionLoading}
                       >
-                        {actionLoading && <span className="spinner-border spinner-border-sm me-2"></span>}
+                        {actionLoading && (
+                          <span className="spinner-border spinner-border-sm me-2"></span>
+                        )}
                         <i className="bi bi-check me-1"></i>
-                        {editingCategory ? 'Cập nhật' : 'Thêm danh mục'}
+                        {editingCategory ? "Cập nhật" : "Thêm danh mục"}
                       </button>
                     </div>
                   </form>
@@ -743,7 +796,7 @@ const AdminMenu: React.FC = () => {
                   <form onSubmit={handleMenuItemSubmit}>
                     <div className="modal-header">
                       <h5 className="modal-title">
-                        {editingMenuItem ? 'Sửa món ăn' : 'Thêm món ăn'}
+                        {editingMenuItem ? "Sửa món ăn" : "Thêm món ăn"}
                       </h5>
                       <button
                         type="button"
@@ -760,7 +813,12 @@ const AdminMenu: React.FC = () => {
                               type="text"
                               className="form-control"
                               value={menuItemForm.name}
-                              onChange={(e) => setMenuItemForm({...menuItemForm, name: e.target.value})}
+                              onChange={e =>
+                                setMenuItemForm({
+                                  ...menuItemForm,
+                                  name: e.target.value,
+                                })
+                              }
                               required
                             />
                           </div>
@@ -772,7 +830,12 @@ const AdminMenu: React.FC = () => {
                               type="number"
                               className="form-control"
                               value={menuItemForm.price}
-                              onChange={(e) => setMenuItemForm({...menuItemForm, price: e.target.value})}
+                              onChange={e =>
+                                setMenuItemForm({
+                                  ...menuItemForm,
+                                  price: e.target.value,
+                                })
+                              }
                               required
                               min="0"
                               step="1000"
@@ -780,7 +843,7 @@ const AdminMenu: React.FC = () => {
                           </div>
                         </div>
                       </div>
-                      
+
                       <div className="row">
                         <div className="col-md-6">
                           <div className="mb-3">
@@ -788,7 +851,12 @@ const AdminMenu: React.FC = () => {
                             <select
                               className="form-select"
                               value={menuItemForm.category}
-                              onChange={(e) => setMenuItemForm({...menuItemForm, category: e.target.value})}
+                              onChange={e =>
+                                setMenuItemForm({
+                                  ...menuItemForm,
+                                  category: e.target.value,
+                                })
+                              }
                               required
                             >
                               <option value="">Chọn danh mục</option>
@@ -806,7 +874,12 @@ const AdminMenu: React.FC = () => {
                             <select
                               className="form-select"
                               value={menuItemForm.status}
-                              onChange={(e) => setMenuItemForm({...menuItemForm, status: e.target.value})}
+                              onChange={e =>
+                                setMenuItemForm({
+                                  ...menuItemForm,
+                                  status: e.target.value,
+                                })
+                              }
                             >
                               <option value="available">Có sẵn</option>
                               <option value="unavailable">Không có sẵn</option>
@@ -814,27 +887,34 @@ const AdminMenu: React.FC = () => {
                           </div>
                         </div>
                       </div>
-                      
+
                       <div className="mb-3">
                         <label className="form-label">Mô tả</label>
                         <textarea
                           className="form-control"
                           rows={3}
                           value={menuItemForm.description}
-                          onChange={(e) => setMenuItemForm({...menuItemForm, description: e.target.value})}
+                          onChange={e =>
+                            setMenuItemForm({
+                              ...menuItemForm,
+                              description: e.target.value,
+                            })
+                          }
                         ></textarea>
                       </div>
-                      
+
                       <div className="mb-3">
                         <label className="form-label">Hình ảnh</label>
                         <input
                           type="file"
                           className="form-control"
                           accept="image/*"
-                          onChange={(e) => setMenuItemForm({
-                            ...menuItemForm, 
-                            image: e.target.files?.[0] || null
-                          })}
+                          onChange={e =>
+                            setMenuItemForm({
+                              ...menuItemForm,
+                              image: e.target.files?.[0] || null,
+                            })
+                          }
                         />
                       </div>
                     </div>
@@ -851,8 +931,10 @@ const AdminMenu: React.FC = () => {
                         className="btn btn-primary"
                         disabled={actionLoading}
                       >
-                        {actionLoading && <span className="spinner-border spinner-border-sm me-2"></span>}
-                        {editingMenuItem ? 'Cập nhật' : 'Thêm'}
+                        {actionLoading && (
+                          <span className="spinner-border spinner-border-sm me-2"></span>
+                        )}
+                        {editingMenuItem ? "Cập nhật" : "Thêm"}
                       </button>
                     </div>
                   </form>
@@ -897,7 +979,7 @@ const AdminMenu: React.FC = () => {
                                 </tr>
                               </thead>
                               <tbody>
-                                {currentRecipes.map((recipe) => (
+                                {currentRecipes.map(recipe => (
                                   <tr key={recipe.id}>
                                     <td>{recipe.ingredient_name}</td>
                                     <td>{recipe.quantity_required}</td>
@@ -915,40 +997,57 @@ const AdminMenu: React.FC = () => {
                         <h6>Cập nhật công thức</h6>
                         <button
                           type="button"
-                          className="btn btn-outline-primary btn-sm"
+                          className="btn btn-outline-primary btn-sm mx-2"
                           onClick={addRecipeItem}
                         >
                           <i className="bi bi-plus me-1"></i>
                           Thêm nguyên liệu
                         </button>
                       </div>
-                      
+
                       {recipeItems.length === 0 ? (
                         <div className="text-center py-4">
-                          <i className="bi bi-list-check text-muted" style={{ fontSize: '2rem' }}></i>
-                          <p className="text-muted mt-2">Chưa có nguyên liệu nào</p>
-                          <button
+                          <i
+                            className="bi bi-list-check text-muted"
+                            style={{ fontSize: "2rem" }}
+                          ></i>
+                          <p className="text-muted mt-2">
+                            Chưa có nguyên liệu nào
+                          </p>
+                          {/* <button
                             type="button"
                             className="btn btn-primary btn-sm"
                             onClick={addRecipeItem}
                           >
                             Thêm nguyên liệu đầu tiên
-                          </button>
+                          </button> */}
                         </div>
                       ) : (
                         <div className="recipe-items">
                           {recipeItems.map((item, index) => (
-                            <div key={index} className="row g-2 mb-2 align-items-center">
+                            <div
+                              key={index}
+                              className="row g-2 mb-2 align-items-center"
+                            >
                               <div className="col-6">
                                 <select
                                   className="form-select"
                                   value={item.ingredient_id}
-                                  onChange={(e) => updateRecipeItem(index, 'ingredient_id', Number(e.target.value))}
+                                  onChange={e =>
+                                    updateRecipeItem(
+                                      index,
+                                      "ingredient_id",
+                                      Number(e.target.value)
+                                    )
+                                  }
                                   required
                                 >
                                   <option value={0}>Chọn nguyên liệu</option>
                                   {ingredients.map(ingredient => (
-                                    <option key={ingredient.id} value={ingredient.id}>
+                                    <option
+                                      key={ingredient.id}
+                                      value={ingredient.id}
+                                    >
                                       {ingredient.name} ({ingredient.unit})
                                     </option>
                                   ))}
@@ -960,7 +1059,13 @@ const AdminMenu: React.FC = () => {
                                   className="form-control"
                                   placeholder="Số lượng"
                                   value={item.quantity_required}
-                                  onChange={(e) => updateRecipeItem(index, 'quantity_required', e.target.value)}
+                                  onChange={e =>
+                                    updateRecipeItem(
+                                      index,
+                                      "quantity_required",
+                                      e.target.value
+                                    )
+                                  }
                                   required
                                   min="0"
                                   step="0.1"
@@ -993,7 +1098,9 @@ const AdminMenu: React.FC = () => {
                         className="btn btn-primary"
                         disabled={actionLoading || recipeItems.length === 0}
                       >
-                        {actionLoading && <span className="spinner-border spinner-border-sm me-2"></span>}
+                        {actionLoading && (
+                          <span className="spinner-border spinner-border-sm me-2"></span>
+                        )}
                         Lưu công thức
                       </button>
                     </div>
