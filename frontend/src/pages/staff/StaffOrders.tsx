@@ -10,6 +10,22 @@ const StaffOrders: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedFloor, setSelectedFloor] = useState<number>(0); // 0 means "All floors"
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [toast, setToast] = useState<{
+    show: boolean;
+    message: string;
+    type: "success" | "error";
+  }>({
+    show: false,
+    message: "",
+    type: "success",
+  });
+
+  const showToast = (message: string, type: "success" | "error" = "error") => {
+    setToast({ show: true, message, type });
+    setTimeout(() => {
+      setToast({ show: false, message: "", type: "success" });
+    }, 5000); // Tự động ẩn sau 5 giây
+  };
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -17,8 +33,8 @@ const StaffOrders: React.FC = () => {
       setError(null);
 
       const response = await ordersApiService.getAllOrders({
-        status: 'unpaid',
-        page_size: 100
+        status: "unpaid",
+        page_size: 100,
       });
 
       if (response.data.success && Array.isArray(response.data.data)) {
@@ -26,11 +42,13 @@ const StaffOrders: React.FC = () => {
         setOrders(transformedOrders);
       } else {
         setOrders([]);
-        console.warn('No orders data received from API');
+        console.warn("No orders data received from API");
       }
     } catch (err) {
-      console.error('Error fetching orders:', err);
-      setError(err instanceof Error ? err.message : 'Có lỗi xảy ra khi tải dữ liệu');
+      console.error("Error fetching orders:", err);
+      setError(
+        err instanceof Error ? err.message : "Có lỗi xảy ra khi tải dữ liệu"
+      );
     } finally {
       setLoading(false);
     }
@@ -46,35 +64,40 @@ const StaffOrders: React.FC = () => {
     status: OrderItem["status"]
   ) => {
     try {
-      let backendStatus: 'ordered' | 'cooking' | 'done' | 'cancelled';
+      let backendStatus: "ordered" | "cooking" | "done" | "cancelled";
 
       switch (status) {
-        case 'pending':
-          backendStatus = 'ordered';
+        case "pending":
+          backendStatus = "ordered";
           break;
-        case 'preparing':
-          backendStatus = 'cooking';
+        case "preparing":
+          backendStatus = "cooking";
           break;
-        case 'ready':
-          backendStatus = 'done';
+        case "ready":
+          backendStatus = "done";
           break;
-        case 'served':
-          backendStatus = 'done';
+        case "served":
+          backendStatus = "done";
           break;
         default:
-          backendStatus = 'cancelled';
+          backendStatus = "cancelled";
       }
 
-      const response = await ordersApiService.updateOrderItemStatus(itemId, backendStatus);
+      const response = await ordersApiService.updateOrderItemStatus(
+        itemId,
+        backendStatus
+      );
 
       if (response.data.success) {
         await fetchOrders();
       } else {
-        throw new Error('Không thể cập nhật trạng thái');
+        throw new Error("Không thể cập nhật trạng thái");
       }
     } catch (err: any) {
-      console.error('Error updating item status:', err);
-      alert('Có lỗi xảy ra khi cập nhật trạng thái món ăn');
+      console.error("Error updating item status:", err);
+      console.log(err);
+      // alert("Có lỗi xảy ra khi cập nhật trạng thái món ăn");
+      showToast(err.response.data.error, "error");
     }
   };
 
@@ -83,18 +106,21 @@ const StaffOrders: React.FC = () => {
     status: Order["status"]
   ) => {
     try {
-      const backendStatus = status === 'completed' ? 'paid' : 'unpaid';
+      const backendStatus = status === "completed" ? "paid" : "unpaid";
 
-      const response = await ordersApiService.updateOrderStatus(orderId, backendStatus);
+      const response = await ordersApiService.updateOrderStatus(
+        orderId,
+        backendStatus
+      );
 
       if (response.data.success) {
         await fetchOrders();
       } else {
-        throw new Error('Không thể cập nhật trạng thái đơn hàng');
+        throw new Error("Không thể cập nhật trạng thái đơn hàng");
       }
     } catch (err) {
-      console.error('Error updating order status:', err);
-      alert('Có lỗi xảy ra khi cập nhật trạng thái đơn hàng');
+      console.error("Error updating order status:", err);
+      alert("Có lỗi xảy ra khi cập nhật trạng thái đơn hàng");
     }
   };
 
@@ -105,11 +131,11 @@ const StaffOrders: React.FC = () => {
       if (response.data.success) {
         await fetchOrders();
       } else {
-        throw new Error('Không thể hủy món ăn');
+        throw new Error("Không thể hủy món ăn");
       }
     } catch (err) {
-      console.error('Error deleting item:', err);
-      alert('Có lỗi xảy ra khi hủy món ăn');
+      console.error("Error deleting item:", err);
+      alert("Có lỗi xảy ra khi hủy món ăn");
     }
   };
 
@@ -149,7 +175,10 @@ const StaffOrders: React.FC = () => {
   if (loading) {
     return (
       <StaffLayout>
-        <div className="d-flex justify-content-center align-items-center" style={{ height: "50vh" }}>
+        <div
+          className="d-flex justify-content-center align-items-center"
+          style={{ height: "50vh" }}
+        >
           <div className="text-center">
             <div className="spinner-border text-primary mb-3" role="status">
               <span className="visually-hidden">Đang tải...</span>
@@ -209,10 +238,11 @@ const StaffOrders: React.FC = () => {
             className="form-control"
             placeholder="Tìm kiếm theo số đơn, bàn, khách hàng, món ăn..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={e => setSearchQuery(e.target.value)}
           />
           {searchQuery && (
             <button
+              aria-label="Clear search"
               className="btn btn-outline-secondary"
               onClick={() => setSearchQuery("")}
             >
@@ -231,25 +261,37 @@ const StaffOrders: React.FC = () => {
         <div className="btn-group" role="group">
           <button
             type="button"
-            className={`btn ${selectedFloor === 0 ? 'btn-primary' : 'btn-outline-primary'}`}
+            className={`btn ${
+              selectedFloor === 0 ? "btn-primary" : "btn-outline-primary"
+            }`}
             onClick={() => setSelectedFloor(0)}
           >
             <i className="bi bi-grid-3x3 me-1"></i>
             Tất cả tầng
-            <span className="badge bg-light text-dark ms-2">{orders.length}</span>
+            <span className="badge bg-light text-dark ms-2">
+              {orders.length}
+            </span>
           </button>
           {availableFloors.map(floor => {
-            const floorOrderCount = orders.filter(o => o.floorId === floor).length;
+            const floorOrderCount = orders.filter(
+              o => o.floorId === floor
+            ).length;
             return (
               <button
                 key={floor}
                 type="button"
-                className={`btn ${selectedFloor === floor ? 'btn-primary' : 'btn-outline-primary'}`}
+                className={`btn ${
+                  selectedFloor === floor
+                    ? "btn-primary"
+                    : "btn-outline-primary"
+                }`}
                 onClick={() => setSelectedFloor(floor)}
               >
                 <i className="bi bi-layers me-1"></i>
                 Tầng {floor}
-                <span className="badge bg-light text-dark ms-2">{floorOrderCount}</span>
+                <span className="badge bg-light text-dark ms-2">
+                  {floorOrderCount}
+                </span>
               </button>
             );
           })}
@@ -276,13 +318,47 @@ const StaffOrders: React.FC = () => {
               <p className="text-muted">
                 {searchQuery || selectedFloor !== 0
                   ? "Không tìm thấy đơn hàng nào phù hợp với bộ lọc hiện tại."
-                  : "Chưa có đơn hàng nào được tạo."
-                }
+                  : "Chưa có đơn hàng nào được tạo."}
               </p>
             </div>
           </div>
         )}
       </div>
+      {/* Toast Notification */}
+      {toast.show && (
+        <div
+          className="position-fixed top-0 end-0 p-3"
+          style={{ zIndex: 1055 }}
+        >
+          <div className={`toast show`} role="alert">
+            <div
+              className={`toast-header ${
+                toast.type === "error"
+                  ? "bg-danger text-white"
+                  : "bg-success text-white"
+              }`}
+            >
+              <i
+                className={`bi ${
+                  toast.type === "error"
+                    ? "bi-exclamation-triangle"
+                    : "bi-check-circle"
+                } me-2`}
+              ></i>
+              <strong className="me-auto">
+                {toast.type === "error" ? "Lỗi" : "Thành công"}
+              </strong>
+              <button
+                type="button"
+                className="btn-close btn-close-white"
+                onClick={() => setToast({ ...toast, show: false })}
+                aria-label="Đóng"
+              ></button>
+            </div>
+            <div className="toast-body">{toast.message}</div>
+          </div>
+        </div>
+      )}
     </StaffLayout>
   );
 };

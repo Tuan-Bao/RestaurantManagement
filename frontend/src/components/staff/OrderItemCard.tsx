@@ -14,22 +14,34 @@ const OrderItemCard: React.FC<OrderItemCardProps> = ({
 }) => {
   const getStatusBadge = (backendStatus?: string) => {
     // Map backend status to display info
-    const statusConfig: { [key: string]: { color: string; text: string; icon: string } } = {
+    const statusConfig: {
+      [key: string]: { color: string; text: string; icon: string };
+    } = {
       ordered: { color: "secondary", text: "Chờ xử lý", icon: "bi-clock" },
-      cooking: { color: "warning", text: "Đang nấu", icon: "bi-hourglass-split" },
-      done: { color: "success", text: "Hoàn thành", icon: "bi-check-circle-fill" },
+      cooking: {
+        color: "warning",
+        text: "Đang nấu",
+        icon: "bi-hourglass-split",
+      },
+      done: {
+        color: "success",
+        text: "Hoàn thành",
+        icon: "bi-check-circle-fill",
+      },
       cancelled: { color: "danger", text: "Đã hủy", icon: "bi-x-circle" },
     };
 
-    return statusConfig[backendStatus || 'ordered'] || statusConfig.ordered;
+    return statusConfig[backendStatus || "ordered"] || statusConfig.ordered;
   };
 
   // Get backend status or fallback to frontend status mapping
-  const backendStatus = (item as any)?.backendStatus || 'ordered';
+  const backendStatus = (item as any)?.backendStatus || "ordered";
   const statusInfo = getStatusBadge(backendStatus);
-  const isCancelled = backendStatus === 'cancelled';
+  const isCancelled = backendStatus === "cancelled";
 
-  const getNextBackendStatus = (currentBackendStatus: string): string | null => {
+  const getNextBackendStatus = (
+    currentBackendStatus: string
+  ): string | null => {
     switch (currentBackendStatus) {
       case "ordered":
         return "cooking";
@@ -41,7 +53,9 @@ const OrderItemCard: React.FC<OrderItemCardProps> = ({
   };
 
   const nextBackendStatus = getNextBackendStatus(backendStatus);
-  const nextStatusInfo = nextBackendStatus ? getStatusBadge(nextBackendStatus) : null;
+  const nextStatusInfo = nextBackendStatus
+    ? getStatusBadge(nextBackendStatus)
+    : null;
 
   return (
     <div className="card mb-2 order-item-card">
@@ -95,15 +109,18 @@ const OrderItemCard: React.FC<OrderItemCardProps> = ({
             <button
               className={`btn btn-sm btn-${nextStatusInfo.color}`}
               onClick={() => {
-                console.log('Changing item status:', {
+                console.log("Changing item status:", {
                   itemId: item.id,
                   from: backendStatus,
-                  to: nextBackendStatus
+                  to: nextBackendStatus,
                 });
                 // Map backend status to frontend status for API call
                 const frontendStatus: OrderItem["status"] =
-                  nextBackendStatus === "cooking" ? "preparing" :
-                    nextBackendStatus === "done" ? "served" : "pending";
+                  nextBackendStatus === "cooking"
+                    ? "preparing"
+                    : nextBackendStatus === "done"
+                    ? "served"
+                    : "pending";
                 onStatusChange(item.id, frontendStatus);
               }}
             >
@@ -113,19 +130,24 @@ const OrderItemCard: React.FC<OrderItemCardProps> = ({
             </button>
           )}
 
-          {!isCancelled && backendStatus === "ordered" && (
-            <button
-              className="btn btn-sm btn-outline-danger"
-              onClick={() => {
-                if (confirm(`Bạn có chắc chắn muốn hủy món "${item.menuItemName}" khỏi đơn hàng?`)) {
-                  onItemDelete(item.id);
-                }
-              }}
-            >
-              <i className="bi bi-trash me-1"></i>
-              Hủy món
-            </button>
-          )}
+          {!isCancelled &&
+            (backendStatus === "ordered" || backendStatus === "cooking") && (
+              <button
+                className="btn btn-sm btn-outline-danger"
+                onClick={() => {
+                  if (
+                    confirm(
+                      `Bạn có chắc chắn muốn hủy món "${item.menuItemName}" khỏi đơn hàng?`
+                    )
+                  ) {
+                    onItemDelete(item.id);
+                  }
+                }}
+              >
+                <i className="bi bi-trash me-1"></i>
+                Hủy món
+              </button>
+            )}
 
           {isCancelled && (
             <small className="text-muted">Món ăn này đã bị hủy</small>

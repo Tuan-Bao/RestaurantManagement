@@ -24,12 +24,13 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  
+
   // Auto-expand inventory menu if currently on inventory-related pages
-  const isInventoryPage = location.pathname.startsWith('/admin/inventory') || 
-                         location.pathname.startsWith('/admin/stock-in') || 
-                         location.pathname.startsWith('/admin/stock-out');
-  
+  const isInventoryPage =
+    location.pathname.startsWith("/admin/inventory") ||
+    location.pathname.startsWith("/admin/stock-in") ||
+    location.pathname.startsWith("/admin/stock-out");
+
   const [expandedMenu, setExpandedMenu] = useState<string | null>(
     isInventoryPage ? "/admin/inventory" : null
   );
@@ -56,19 +57,26 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     { path: "/admin/dashboard", name: "Dashboard", icon: "bi-speedometer2" },
     { path: "/admin/accounts", name: "Quản lý tài khoản", icon: "bi-people" },
     { path: "/admin/tables", name: "Quản lý bàn", icon: "bi-grid-3x3" },
-    { 
-      path: "/admin/inventory", 
-      name: "Quản lý kho", 
+    {
+      path: "/admin/inventory",
+      name: "Quản lý kho",
       icon: "bi-box",
       subItems: [
         { path: "/admin/inventory", name: "Kho hàng", icon: "bi-box" },
-        { path: "/admin/stock-in", name: "Lịch sử nhập kho", icon: "bi-arrow-down-circle" },
-        { path: "/admin/stock-out", name: "Lịch sử xuất kho", icon: "bi-arrow-up-circle" }
-      ]
+        {
+          path: "/admin/stock-in",
+          name: "Lịch sử nhập kho",
+          icon: "bi-arrow-down-circle",
+        },
+        {
+          path: "/admin/stock-out",
+          name: "Lịch sử xuất kho",
+          icon: "bi-arrow-up-circle",
+        },
+      ],
     },
     { path: "/admin/menu", name: "Quản lý menu", icon: "bi-journal-text" },
     { path: "/admin/orders", name: "Quản lý đơn hàng", icon: "bi-cart" },
-    { path: "/admin/reports", name: "Báo cáo", icon: "bi-graph-up" },
   ];
 
   const toggleSidebar = () => {
@@ -95,7 +103,12 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         className={`bg-dark text-white sidebar-width position-fixed position-lg-relative h-100 ${
           sidebarOpen ? "d-block" : "d-none d-lg-block"
         }`}
-        style={{ zIndex: 1041, width: '280px', minWidth: '280px', maxWidth: '280px' }}
+        style={{
+          zIndex: 1041,
+          width: "280px",
+          minWidth: "280px",
+          maxWidth: "280px",
+        }}
       >
         {/* Logo */}
         <div className="p-3 border-bottom border-secondary d-flex justify-content-between align-items-center">
@@ -121,15 +134,27 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 // Menu item with submenu
                 <div>
                   <button
-                    onClick={() => setExpandedMenu(expandedMenu === item.path ? null : item.path)}
+                    onClick={() =>
+                      setExpandedMenu(
+                        expandedMenu === item.path ? null : item.path
+                      )
+                    }
                     className={`nav-link text-white mb-2 rounded w-100 text-start border-0 ${
-                      location.pathname.startsWith('/admin/inventory') ? "bg-primary" : "text-light"
+                      location.pathname.startsWith("/admin/inventory")
+                        ? "bg-primary"
+                        : "text-light"
                     }`}
                     style={{ textDecoration: "none", background: "none" }}
                   >
                     <i className={`${item.icon} me-2`}></i>
                     {item.name}
-                    <i className={`bi ${expandedMenu === item.path ? 'bi-chevron-down' : 'bi-chevron-right'} float-end`}></i>
+                    <i
+                      className={`bi ${
+                        expandedMenu === item.path
+                          ? "bi-chevron-down"
+                          : "bi-chevron-right"
+                      } float-end`}
+                    ></i>
                   </button>
                   {expandedMenu === item.path && (
                     <div className="ms-3">
@@ -139,7 +164,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                           to={subItem.path}
                           onClick={closeSidebar}
                           className={`nav-link text-white mb-1 rounded ${
-                            location.pathname === subItem.path ? "bg-secondary" : "text-light"
+                            location.pathname === subItem.path
+                              ? "bg-secondary"
+                              : "text-light"
                           }`}
                           style={{ textDecoration: "none", fontSize: "0.9rem" }}
                         >
@@ -156,7 +183,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                   to={item.path}
                   onClick={closeSidebar}
                   className={`nav-link text-white mb-2 rounded ${
-                    location.pathname === item.path ? "bg-primary" : "text-light"
+                    location.pathname === item.path
+                      ? "bg-primary"
+                      : "text-light"
                   }`}
                   style={{ textDecoration: "none" }}
                 >
@@ -189,7 +218,10 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       </div>
 
       {/* Main Content */}
-      <div className="flex-grow-1 d-flex flex-column" style={{ marginLeft: sidebarOpen ? '0' : '0' }}>
+      <div
+        className="flex-grow-1 d-flex flex-column"
+        style={{ marginLeft: sidebarOpen ? "0" : "0" }}
+      >
         {/* Header */}
         <header className="bg-white shadow-sm border-bottom px-3 px-md-4 py-3">
           <div className="d-flex justify-content-between align-items-center">
