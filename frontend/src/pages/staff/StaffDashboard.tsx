@@ -1,7 +1,70 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import StaffLayout from "../../layouts/StaffLayout";
+import {
+  staffDashboardApi,
+  type StaffStats,
+  type ActiveOrder,
+  type Alert,
+} from "../../services/staffDashboard";
+import Loading from "../../components/shared/Loading";
 
 const StaffDashboard: React.FC = () => {
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<StaffStats | null>(null);
+  const [activeOrders, setActiveOrders] = useState<ActiveOrder[]>([]);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      const [statsData, ordersData, alertsData] = await Promise.all([
+        staffDashboardApi.getStats(),
+        staffDashboardApi.getActiveOrders(),
+        staffDashboardApi.getAlerts(),
+      ]);
+
+      setStats(statsData);
+      setActiveOrders(ordersData);
+      setAlerts(alertsData);
+    } catch (error) {
+      console.error("Error loading staff dashboard:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDashboardData();
+
+    // Auto refresh every 30 seconds
+    const interval = setInterval(loadDashboardData, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+    }).format(amount);
+  };
+
+  const getOrderStatusBadge = (status: string) => {
+    const badges: { [key: string]: { class: string; text: string } } = {
+      unpaid: { class: "bg-primary", text: "Mới" },
+      pending: { class: "bg-warning", text: "Đang phục vụ" },
+      paid: { class: "bg-success", text: "Đã thanh toán" },
+    };
+    return badges[status] || { class: "bg-secondary", text: status };
+  };
+
+  if (loading) {
+    return (
+      <StaffLayout>
+        <Loading />
+      </StaffLayout>
+    );
+  }
+
   return (
     <StaffLayout>
       <div className="row">
@@ -21,7 +84,7 @@ const StaffDashboard: React.FC = () => {
               <div className="fs-1 mb-2">
                 <i className="bi bi-grid-3x3"></i>
               </div>
-              <h4 className="mb-1">8</h4>
+              <h4 className="mb-1">{stats?.tables.occupied || 0}</h4>
               <small>Bàn đang phục vụ</small>
             </div>
           </div>
@@ -33,7 +96,7 @@ const StaffDashboard: React.FC = () => {
               <div className="fs-1 mb-2">
                 <i className="bi bi-cart-check"></i>
               </div>
-              <h4 className="mb-1">15</h4>
+              <h4 className="mb-1">{stats?.orders.today || 0}</h4>
               <small>Đơn hôm nay</small>
             </div>
           </div>
@@ -45,7 +108,7 @@ const StaffDashboard: React.FC = () => {
               <div className="fs-1 mb-2">
                 <i className="bi bi-clock"></i>
               </div>
-              <h4 className="mb-1">5</h4>
+              <h4 className="mb-1">{stats?.orders.pending || 0}</h4>
               <small>Đang chờ phục vụ</small>
             </div>
           </div>
@@ -57,8 +120,10 @@ const StaffDashboard: React.FC = () => {
               <div className="fs-1 mb-2">
                 <i className="bi bi-currency-dollar"></i>
               </div>
-              <h4 className="mb-1">2.8M</h4>
-              <small>Doanh thu ca này</small>
+              <h4 className="mb-1">
+                {formatCurrency(stats?.revenue.today || 0)}
+              </h4>
+              <small>Doanh thu hôm nay</small>
             </div>
           </div>
         </div>
@@ -123,100 +188,104 @@ const StaffDashboard: React.FC = () => {
                 <i className="bi bi-list-check me-2"></i>
                 Đơn hàng hiện tại
               </h6>
-              <button className="btn btn-sm btn-primary">
+              <button
+                className="btn btn-sm btn-primary"
+                onClick={loadDashboardData}
+              >
                 <i className="bi bi-arrow-clockwise me-1"></i>
                 Làm mới
               </button>
             </div>
             <div className="card-body">
               <div className="row g-3">
-                {/* Order Card 1 */}
-                <div className="col-md-6">
-                  <div className="card border-primary">
-                    <div className="card-header bg-primary text-white d-flex justify-content-between">
-                      <span>
-                        <i className="bi bi-grid-3x3 me-1"></i>Bàn 3
-                      </span>
-                      <span className="badge bg-light text-dark">Mới</span>
-                    </div>
-                    <div className="card-body p-3">
-                      <small className="text-muted">Đơn #125 - 20:00</small>
-                      <div className="mt-2">
-                        <small className="d-block">• 2x Phở bò tái (80k)</small>
-                        <small className="d-block">• 1x Nước ngọt (15k)</small>
-                      </div>
-                      <div className="d-flex justify-content-between mt-3">
-                        <strong>Tổng: 175,000đ</strong>
-                        <button className="btn btn-sm btn-success">
-                          Xử lý
-                        </button>
-                      </div>
-                    </div>
+                {activeOrders.length === 0 ? (
+                  <div className="col-12 text-center py-5 text-muted">
+                    <i className="bi bi-inbox fs-1 d-block mb-3"></i>
+                    <p>Không có đơn hàng đang hoạt động</p>
                   </div>
-                </div>
+                ) : (
+                  activeOrders.slice(0, 6).map(order => {
+                    const statusBadge = getOrderStatusBadge(order.status);
+                    const isLongWaiting = order.waiting_minutes > 15;
+                    const cardBorderClass =
+                      order.status === "unpaid"
+                        ? "border-primary"
+                        : "border-warning";
 
-                {/* Order Card 2 */}
-                <div className="col-md-6">
-                  <div className="card border-warning">
-                    <div className="card-header bg-warning text-dark d-flex justify-content-between">
-                      <span>
-                        <i className="bi bi-grid-3x3 me-1"></i>Bàn 7
-                      </span>
-                      <span className="badge bg-dark">Đang phục vụ</span>
-                    </div>
-                    <div className="card-body p-3">
-                      <small className="text-muted">Đơn #124 - 19:45</small>
-                      <div className="mt-2">
-                        <small className="d-block">• 1x Bún bò Huế (65k)</small>
-                        <small className="d-block">• 2x Trà đá (10k)</small>
+                    return (
+                      <div className="col-md-6" key={order.id}>
+                        <div className={`card ${cardBorderClass}`}>
+                          <div
+                            className={`card-header ${
+                              order.status === "unpaid"
+                                ? "bg-primary text-white"
+                                : "bg-warning text-dark"
+                            } d-flex justify-content-between`}
+                          >
+                            <span>
+                              <i className="bi bi-grid-3x3 me-1"></i>
+                              {order.table.name}
+                            </span>
+                            <span className={`badge ${statusBadge.class}`}>
+                              {statusBadge.text}
+                            </span>
+                          </div>
+                          <div className="card-body p-3">
+                            <small className="text-muted">
+                              Đơn #{order.id} -{" "}
+                              {new Date(order.created_at).toLocaleTimeString(
+                                "vi-VN",
+                                { hour: "2-digit", minute: "2-digit" }
+                              )}
+                              {isLongWaiting && (
+                                <span className="text-danger ms-2">
+                                  <i className="bi bi-exclamation-triangle"></i>{" "}
+                                  Chờ {order.waiting_minutes} phút
+                                </span>
+                              )}
+                            </small>
+                            <div className="mt-2">
+                              {order.items.slice(0, 3).map((item, idx) => (
+                                <small className="d-block" key={idx}>
+                                  • {item.quantity}x {item.menu_item_name} (
+                                  {formatCurrency(item.price)})
+                                </small>
+                              ))}
+                              {order.items.length > 3 && (
+                                <small className="d-block text-muted">
+                                  • +{order.items.length - 3} món khác...
+                                </small>
+                              )}
+                            </div>
+                            <div className="d-flex justify-content-between mt-3">
+                              <strong>
+                                {formatCurrency(order.total_amount)}
+                              </strong>
+                              <button className="btn btn-sm btn-success">
+                                Xử lý
+                              </button>
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                      <div className="d-flex justify-content-between mt-3">
-                        <strong>Tổng: 85,000đ</strong>
-                        <button className="btn btn-sm btn-primary">
-                          Thanh toán
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Order Card 3 */}
-                <div className="col-md-6">
-                  <div className="card border-info">
-                    <div className="card-header bg-info text-white d-flex justify-content-between">
-                      <span>
-                        <i className="bi bi-grid-3x3 me-1"></i>Bàn 12
-                      </span>
-                      <span className="badge bg-light text-dark">Chờ món</span>
-                    </div>
-                    <div className="card-body p-3">
-                      <small className="text-muted">Đơn #123 - 19:30</small>
-                      <div className="mt-2">
-                        <small className="d-block">• 3x Cơm gà (90k)</small>
-                        <small className="d-block">• 1x Soup (25k)</small>
-                      </div>
-                      <div className="d-flex justify-content-between mt-3">
-                        <strong>Tổng: 315,000đ</strong>
-                        <button className="btn btn-sm btn-outline-info">
-                          Chi tiết
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                    );
+                  })
+                )}
 
                 {/* Add New Order Card */}
-                <div className="col-md-6">
-                  <div
-                    className="card border-2 border-dashed h-100 d-flex align-items-center justify-content-center"
-                    style={{ minHeight: "180px", cursor: "pointer" }}
-                  >
-                    <div className="text-center text-muted">
-                      <i className="bi bi-plus-circle fs-1 mb-2"></i>
-                      <p className="mb-0">Tạo đơn mới</p>
+                {activeOrders.length > 0 && (
+                  <div className="col-md-6">
+                    <div
+                      className="card border-2 border-dashed h-100 d-flex align-items-center justify-content-center"
+                      style={{ minHeight: "180px", cursor: "pointer" }}
+                    >
+                      <div className="text-center text-muted">
+                        <i className="bi bi-plus-circle fs-1 mb-2"></i>
+                        <p className="mb-0">Tạo đơn mới</p>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           </div>
@@ -231,24 +300,26 @@ const StaffDashboard: React.FC = () => {
               </h6>
             </div>
             <div className="card-body">
-              <div className="alert alert-warning">
-                <small>
-                  <i className="bi bi-clock me-1"></i>
-                  Bàn 5 chờ quá 15 phút
-                </small>
-              </div>
-              <div className="alert alert-danger">
-                <small>
-                  <i className="bi bi-exclamation-triangle me-1"></i>
-                  Phở bò sắp hết (còn 3 suất)
-                </small>
-              </div>
-              <div className="alert alert-info">
-                <small>
-                  <i className="bi bi-info-circle me-1"></i>
-                  Có 2 bàn mới đặt chỗ
-                </small>
-              </div>
+              {alerts.length === 0 ? (
+                <div className="text-center py-4 text-muted">
+                  <i className="bi bi-check-circle fs-1 d-block mb-2"></i>
+                  <small>Không có cảnh báo</small>
+                </div>
+              ) : (
+                alerts.map((alert, index) => (
+                  <div
+                    key={index}
+                    className={`alert alert-${alert.type} ${
+                      index < alerts.length - 1 ? "mb-2" : ""
+                    }`}
+                  >
+                    <small>
+                      <i className={`bi bi-${alert.icon} me-1`}></i>
+                      {alert.message}
+                    </small>
+                  </div>
+                ))
+              )}
 
               <hr />
 
@@ -260,10 +331,10 @@ const StaffDashboard: React.FC = () => {
                 <input
                   className="form-check-input"
                   type="checkbox"
-                  checked
-                  placeholder="Kiểm tra kho buổi sáng"
+                  id="task1"
+                  defaultChecked
                 />
-                <label className="form-check-label">
+                <label className="form-check-label" htmlFor="task1">
                   <small>Kiểm tra kho buổi sáng</small>
                 </label>
               </div>
@@ -271,9 +342,9 @@ const StaffDashboard: React.FC = () => {
                 <input
                   className="form-check-input"
                   type="checkbox"
-                  placeholder="Cập nhật menu ngày"
+                  id="task2"
                 />
-                <label className="form-check-label">
+                <label className="form-check-label" htmlFor="task2">
                   <small>Cập nhật menu ngày</small>
                 </label>
               </div>
@@ -281,9 +352,9 @@ const StaffDashboard: React.FC = () => {
                 <input
                   className="form-check-input"
                   type="checkbox"
-                  placeholder="Dọn dẹp khu vực bàn"
+                  id="task3"
                 />
-                <label className="form-check-label">
+                <label className="form-check-label" htmlFor="task3">
                   <small>Dọn dẹp khu vực bàn</small>
                 </label>
               </div>

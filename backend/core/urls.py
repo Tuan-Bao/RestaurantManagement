@@ -16,6 +16,10 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from .dashboard import (
+    dashboard_stats, recent_orders, top_menu_items, revenue_by_day,
+    staff_dashboard_stats, staff_active_orders, staff_alerts
+)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -24,4 +28,15 @@ urlpatterns = [
     path('api/inventory/', include('inventory.urls')),
     path('api/menu/', include('menu.urls')),
     path('api/orders/', include('orders.urls')),
+    
+    # Dashboard endpoints
+    path('api/dashboard/stats/', dashboard_stats, name='dashboard-stats'),
+    path('api/dashboard/recent-orders/', recent_orders, name='dashboard-recent-orders'),
+    path('api/dashboard/top-items/', top_menu_items, name='dashboard-top-items'),
+    path('api/dashboard/revenue-by-day/', revenue_by_day, name='dashboard-revenue-by-day'),
+    
+    # Staff Dashboard endpoints
+    path('api/dashboard/staff/stats/', staff_dashboard_stats, name='staff-dashboard-stats'),
+    path('api/dashboard/staff/active-orders/', staff_active_orders, name='staff-active-orders'),
+    path('api/dashboard/staff/alerts/', staff_alerts, name='staff-alerts'),
 ]
