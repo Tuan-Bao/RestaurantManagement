@@ -5,6 +5,7 @@ from django.db.models import Sum, Count, F, DecimalField
 from django.db.models.functions import Coalesce, TruncDate
 from django.utils import timezone
 from datetime import timedelta
+import pytz
 
 from accounts.permissions import IsAdminUser
 from orders.models import Order, OrderItem, Payment
@@ -412,4 +413,245 @@ def staff_alerts(request):
     return Response({
         'success': True,
         'data': alerts
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def insights_most_expensive(request):
+    """
+    GET /api/dashboard/insights/most-expensive/?limit=5 - Lấy món ăn đắt nhất
+    """
+    limit = int(request.GET.get('limit', 5))
+    
+    expensive_items = MenuItem.objects.filter(
+        deleted_at__isnull=True
+    ).order_by('-price')[:limit]
+    
+    data = []
+    for item in expensive_items:
+        # Get sales count for this item
+        sales_count = OrderItem.objects.filter(
+            menu_item=item
+        ).exclude(
+            status='cancelled'
+        ).aggregate(
+            total=Coalesce(Sum('quantity'), 0)
+        )['total']
+        
+        # Get total revenue
+        revenue = OrderItem.objects.filter(
+            menu_item=item
+        ).exclude(
+            status='cancelled'
+        ).aggregate(
+            total=Coalesce(Sum(F('quantity') * F('price_each'), output_field=DecimalField()), 0, output_field=DecimalField())
+        )['total']
+        
+        data.append({
+            'id': item.id,
+            'name': item.name,
+            'price': float(item.price),
+            'category': item.category.name if item.category else 'N/A',
+            'sales_count': sales_count,
+            'total_revenue': float(revenue),
+            'status': item.status
+        })
+    
+    return Response({
+        'success': True,
+        'data': data
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def insights_order_history(request):
+    """
+    GET /api/dashboard/insights/order-history/?days=30 - Lấy lịch sử đơn hàng theo thời gian
+    """
+    days = int(request.GET.get('days', 30))
+    date_from = timezone.now() - timedelta(days=days)
+    
+    # Get order count by status
+    order_by_status = Order.objects.filter(
+        created_at__gte=date_from
+    ).values('status').annotate(
+        count=Count('id')
+    )
+    
+    # Get orders by time of day (morning, afternoon, evening, night)
+    orders = Order.objects.filter(
+        created_at__gte=date_from
+    ).values('created_at')
+    
+    time_distribution = {
+        'morning': 0,    # 6-11
+        'afternoon': 0,  # 12-17
+        'evening': 0,    # 18-21
+        'night': 0       # 22-5
+    }
+    
+    # Convert to Vietnam timezone
+    vietnam_tz = pytz.timezone('Asia/Ho_Chi_Minh')
+    
+    for order in orders:
+        # Convert UTC to Vietnam timezone
+        local_time = order['created_at'].astimezone(vietnam_tz)
+        hour = local_time.hour
+        if 6 <= hour < 12:
+            time_distribution['morning'] += 1
+        elif 12 <= hour < 18:
+            time_distribution['afternoon'] += 1
+        elif 18 <= hour < 22:
+            time_distribution['evening'] += 1
+        else:
+            time_distribution['night'] += 1
+    
+    # Average order value
+    avg_order = Payment.objects.filter(
+        created_at__gte=date_from
+    ).aggregate(
+        avg_value=Coalesce(Sum('amount') / Count('order_id', distinct=True), 0, output_field=DecimalField())
+    )['avg_value']
+    
+    # Most active tables
+    active_tables = Order.objects.filter(
+        created_at__gte=date_from
+    ).exclude(
+        table__isnull=True
+    ).values(
+        'table__id', 'table__name'
+    ).annotate(
+        order_count=Count('id'),
+        total_revenue=Coalesce(Sum('payments__amount'), 0, output_field=DecimalField())
+    ).order_by('-order_count')[:5]
+    
+    return Response({
+        'success': True,
+        'data': {
+            'status_distribution': list(order_by_status),
+            'time_distribution': time_distribution,
+            'average_order_value': float(avg_order),
+            'most_active_tables': [
+                {
+                    'id': table['table__id'],
+                    'name': table['table__name'],
+                    'order_count': table['order_count'],
+                    'total_revenue': float(table['total_revenue'])
+                }
+                for table in active_tables
+            ]
+        }
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def insights_peak_hours(request):
+    """
+    GET /api/dashboard/insights/peak-hours/?days=30 - Lấy giờ cao điểm
+    """
+    days = int(request.GET.get('days', 30))
+    date_from = timezone.now() - timedelta(days=days)
+    
+    # Get orders grouped by hour
+    orders = Order.objects.filter(
+        created_at__gte=date_from
+    ).values('created_at')
+    
+    hourly_distribution = {hour: 0 for hour in range(24)}
+    
+    # Convert to Vietnam timezone
+    vietnam_tz = pytz.timezone('Asia/Ho_Chi_Minh')
+    
+    for order in orders:
+        # Convert UTC to Vietnam timezone
+        local_time = order['created_at'].astimezone(vietnam_tz)
+        hour = local_time.hour
+        hourly_distribution[hour] += 1
+    
+    # Convert to list format
+    hourly_data = [
+        {
+            'hour': hour,
+            'order_count': count,
+            'is_peak': count >= max(hourly_distribution.values()) * 0.7 if max(hourly_distribution.values()) > 0 else False
+        }
+        for hour, count in hourly_distribution.items()
+    ]
+    
+    # Get revenue by hour
+    hourly_revenue = {}
+    payments_with_orders = Payment.objects.filter(
+        created_at__gte=date_from
+    ).select_related('order')
+    
+    for payment in payments_with_orders:
+        # Convert UTC to Vietnam timezone
+        local_time = payment.created_at.astimezone(vietnam_tz)
+        hour = local_time.hour
+        if hour not in hourly_revenue:
+            hourly_revenue[hour] = 0
+        hourly_revenue[hour] += float(payment.amount)
+    
+    # Add revenue to hourly data
+    for item in hourly_data:
+        item['revenue'] = hourly_revenue.get(item['hour'], 0)
+    
+    return Response({
+        'success': True,
+        'data': hourly_data
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def insights_staff_performance(request):
+    """
+    GET /api/dashboard/insights/staff-performance/?days=30 - Lấy hiệu suất nhân viên (chỉ admin xem tất cả)
+    """
+    days = int(request.GET.get('days', 30))
+    date_from = timezone.now() - timedelta(days=days)
+    
+    # Check if admin or staff viewing their own stats
+    is_admin = request.user.role == 'admin'
+    
+    if is_admin:
+        # Admin can see all staff
+        orders_query = Order.objects.filter(created_at__gte=date_from)
+    else:
+        # Staff can only see their own stats
+        orders_query = Order.objects.filter(created_at__gte=date_from, user=request.user)
+    
+    # Get performance by staff
+    if is_admin:
+        staff_stats = orders_query.values(
+            'user__id', 'user__username', 'user__name'
+        ).annotate(
+            total_orders=Count('id'),
+            total_revenue=Coalesce(Sum('payments__amount'), 0, output_field=DecimalField())
+        ).order_by('-total_orders')[:10]
+    else:
+        staff_stats = orders_query.values(
+            'user__id', 'user__username', 'user__name'
+        ).annotate(
+            total_orders=Count('id'),
+            total_revenue=Coalesce(Sum('payments__amount'), 0, output_field=DecimalField())
+        )
+    
+    data = [
+        {
+            'staff_id': stat['user__id'],
+            'staff_name': stat['user__name'] or stat['user__username'],
+            'staff_email': stat['user__username'],
+            'total_orders': stat['total_orders'],
+            'total_revenue': float(stat['total_revenue'])
+        }
+        for stat in staff_stats
+    ]
+    
+    return Response({
+        'success': True,
+        'data': data
     })

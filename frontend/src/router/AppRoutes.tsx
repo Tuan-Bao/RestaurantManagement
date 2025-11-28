@@ -15,6 +15,7 @@ import StaffTables from "../pages/staff/StaffTables";
 import StaffOrders from "../pages/staff/StaffOrders";
 import StaffMenu from "../pages/staff/StaffMenu";
 import StaffInventory from "../pages/staff/StaffInventory";
+import MoMoResult from "../pages/payment/MoMoResult";
 import ProtectedRoute from "./ProtectedRoute";
 import "../layouts/Layout.css";
 // App
@@ -29,6 +30,7 @@ const AppRoutes = () => {
     <Routes>
       {/* Public Routes */}
       <Route path="/login" element={<Login />} />
+      <Route path="/payment/momo/result" element={<MoMoResult />} />
 
       {/* Protected Admin Routes */}
       <Route

@@ -6,6 +6,7 @@ from rest_framework.views import APIView
 from django.db.models import Q, Sum
 from django.utils import timezone
 from django.db import transaction
+from django.views.decorators.csrf import csrf_exempt
 from datetime import datetime, timedelta
 
 from .models import Order, OrderItem, Payment
@@ -16,6 +17,7 @@ from .serializers import (
 )
 from tables.models import Table
 from menu.models import MenuItem
+from core.momo_payment import MoMoPayment
 
 # ===== ORDER VIEWS =====
 class OrderListCreateView(generics.ListCreateAPIView):
@@ -619,3 +621,327 @@ class OrderItemDeleteView(generics.DestroyAPIView):
             'message': 'Order item deleted successfully',
             'deleted_item': item_info
         }, status=status.HTTP_200_OK)
+
+
+# ===== MOMO PAYMENT VIEWS =====
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_momo_payment(request, order_id):
+    """
+    POST /api/orders/{order_id}/payments/momo/ - Tạo MoMo payment request
+    """
+    try:
+        order = Order.objects.get(pk=order_id)
+    except Order.DoesNotExist:
+        return Response({
+            'success': False,
+            'message': 'Order not found'
+        }, status=status.HTTP_404_NOT_FOUND)
+    
+    if order.status == 'paid':
+        return Response({
+            'success': False,
+            'message': 'Order already paid'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Tính total_amount từ order items
+    total_amount = sum(
+        (item.quantity or 0) * (item.price_each or 0) 
+        for item in order.order_items.all()
+    )
+    
+    if total_amount <= 0:
+        return Response({
+            'success': False,
+            'message': 'Order amount must be greater than 0'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Tạo MoMo payment request
+    momo = MoMoPayment()
+    table_name = order.table.name if order.table else f"Order {order_id}"
+    order_info = f"Thanh toán {table_name}"
+    
+    result = momo.create_payment(
+        order_id=order_id,
+        amount=int(total_amount),
+        order_info=order_info
+    )
+    
+    # Check MoMo response
+    if result.get('resultCode') == 0:
+        # Success - return payment URL
+        return Response({
+            'success': True,
+            'message': 'MoMo payment request created successfully',
+            'data': {
+                'payment_url': result.get('payUrl'),
+                'qr_code_url': result.get('qrCodeUrl'),
+                'deep_link': result.get('deeplink'),
+                'request_id': result.get('requestId'),
+                'order_id': result.get('orderId'),
+                'amount': total_amount
+            }
+        }, status=status.HTTP_200_OK)
+    else:
+        # Failed
+        return Response({
+            'success': False,
+            'message': result.get('message', 'Failed to create MoMo payment'),
+            'error_code': result.get('resultCode')
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
+@csrf_exempt
+@api_view(['POST'])
+def momo_ipn_callback(request):
+    """
+    POST /api/payments/momo/callback/ - MoMo IPN Callback
+    Endpoint này sẽ được MoMo gọi khi thanh toán hoàn tất
+    """
+    # Log callback để debug
+    print("=" * 80)
+    print("🔔 MOMO CALLBACK RECEIVED!")
+    print(f"Request method: {request.method}")
+    print(f"Request data: {request.data}")
+    print(f"Request body: {request.body}")
+    print("=" * 80)
+    
+    data = request.data
+    
+    # Verify signature
+    momo = MoMoPayment()
+    print(f"🔐 Verifying signature...")
+    signature_valid = momo.verify_signature(data)
+    print(f"🔐 Signature valid: {signature_valid}")
+    
+    if not signature_valid:
+        return Response({
+            'success': False,
+            'message': 'Invalid signature'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Extract order_id from orderId (format: ORDER_{id}_{uuid})
+    order_id_str = data.get('orderId', '')
+    print(f"📦 Order ID string: {order_id_str}")
+    
+    try:
+        order_id = int(order_id_str.split('_')[1])
+        print(f"📦 Extracted order ID: {order_id}")
+    except (IndexError, ValueError) as e:
+        print(f"❌ Failed to extract order ID: {e}")
+        return Response({
+            'success': False,
+            'message': 'Invalid order ID format'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Check payment result
+    result_code = data.get('resultCode')
+    print(f"💰 Result code: {result_code}")
+    
+    if result_code == 0:
+        print(f"✅ Payment successful, processing order {order_id}...")
+        # Payment successful
+        try:
+            with transaction.atomic():
+                order = Order.objects.get(pk=order_id)
+                print(f"📋 Found order: {order.id}, current status: {order.status}")
+                
+                # Check if already paid
+                if order.status == 'paid':
+                    print(f"⚠️ Order already paid")
+                    return Response({
+                        'success': True,
+                        'message': 'Order already paid'
+                    })
+                
+                # Calculate total amount
+                total_amount = sum(
+                    (item.quantity or 0) * (item.price_each or 0) 
+                    for item in order.order_items.all()
+                )
+                print(f"💵 Total amount: {total_amount}")
+                
+                # Create payment record
+                payment = Payment.objects.create(
+                    order=order,
+                    amount=total_amount,
+                    discount=0,
+                    tax=0,
+                    method='e_wallet'
+                )
+                print(f"💳 Created payment record: {payment.id}")
+                
+                # Update order status
+                order.status = 'paid'
+                order.closed_at = timezone.now()
+                order.save()
+                print(f"✅ Updated order status to paid")
+                
+                # Update table status
+                if order.table:
+                    order.table.status = 'available'
+                    order.table.save()
+                    print(f"🪑 Updated table {order.table.name} to available")
+                
+                print(f"🎉 Payment processed successfully!")
+                return Response({
+                    'success': True,
+                    'message': 'Payment processed successfully'
+                })
+                
+        except Order.DoesNotExist:
+            print(f"❌ Order {order_id} not found")
+            return Response({
+                'success': False,
+                'message': 'Order not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            print(f"❌ Error processing payment: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return Response({
+                'success': False,
+                'message': f'Error processing payment: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    else:
+        print(f"❌ Payment failed with code {result_code}")
+        # Payment failed or cancelled
+        return Response({
+            'success': False,
+            'message': f'Payment failed with code {result_code}',
+            'result_code': result_code
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def check_momo_payment_status(request, order_id):
+    """
+    GET /api/orders/{order_id}/payments/momo/status/ - Kiểm tra trạng thái thanh toán MoMo
+    """
+    try:
+        order = Order.objects.get(pk=order_id)
+    except Order.DoesNotExist:
+        return Response({
+            'success': False,
+            'message': 'Order not found'
+        }, status=status.HTTP_404_NOT_FOUND)
+    
+    # Check if order is already paid
+    if order.status == 'paid':
+        return Response({
+            'success': True,
+            'message': 'Order is paid',
+            'data': {
+                'status': 'paid',
+                'paid_at': order.closed_at
+            }
+        })
+    else:
+        return Response({
+            'success': True,
+            'message': 'Order is unpaid',
+            'data': {
+                'status': 'unpaid'
+            }
+        })
+
+
+@api_view(['POST'])
+def trigger_momo_callback(request):
+    """
+    POST /api/payments/momo/trigger-callback/ - Trigger MoMo callback thủ công (cho development/đồ án)
+    Body: { "orderId": "ORDER_20_abc123", "amount": 80000, "resultCode": 0 }
+    """
+    print("🔧 MANUAL CALLBACK TRIGGER")
+    
+    order_id_str = request.data.get('orderId', '')
+    amount = request.data.get('amount', 0)
+    result_code = request.data.get('resultCode', 0)
+    
+    print(f"📦 Order ID string: {order_id_str}")
+    print(f"💵 Amount: {amount}")
+    print(f"💰 Result code: {result_code}")
+    
+    # Extract order_id from orderId (format: ORDER_{id}_{uuid})
+    try:
+        order_id = int(order_id_str.split('_')[1])
+        print(f"📦 Extracted order ID: {order_id}")
+    except (IndexError, ValueError, AttributeError) as e:
+        print(f"❌ Failed to extract order ID: {e}")
+        return Response({
+            'success': False,
+            'message': 'Invalid order ID format'
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    if result_code == 0:
+        print(f"✅ Processing payment for order {order_id}...")
+        try:
+            with transaction.atomic():
+                order = Order.objects.get(pk=order_id)
+                print(f"📋 Found order: {order.id}, current status: {order.status}")
+                
+                # Check if already paid
+                if order.status == 'paid':
+                    print(f"⚠️ Order already paid")
+                    return Response({
+                        'success': True,
+                        'message': 'Order already paid'
+                    })
+                
+                # Calculate total amount
+                total_amount = sum(
+                    (item.quantity or 0) * (item.price_each or 0) 
+                    for item in order.order_items.all()
+                )
+                print(f"💵 Total amount: {total_amount}")
+                
+                # Create payment record
+                payment = Payment.objects.create(
+                    order=order,
+                    amount=total_amount,
+                    discount=0,
+                    tax=0,
+                    method='e_wallet'
+                )
+                print(f"💳 Created payment record: {payment.id}")
+                
+                # Update order status
+                order.status = 'paid'
+                order.closed_at = timezone.now()
+                order.save()
+                print(f"✅ Updated order status to paid")
+                
+                # Update table status
+                if order.table:
+                    order.table.status = 'available'
+                    order.table.save()
+                    print(f"🪑 Updated table {order.table.name} to available")
+                
+                print(f"🎉 Payment processed successfully!")
+                return Response({
+                    'success': True,
+                    'message': 'Payment processed successfully'
+                })
+                
+        except Order.DoesNotExist:
+            print(f"❌ Order {order_id} not found")
+            return Response({
+                'success': False,
+                'message': 'Order not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            print(f"❌ Error processing payment: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return Response({
+                'success': False,
+                'message': f'Error processing payment: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    else:
+        print(f"❌ Payment failed with code {result_code}")
+        return Response({
+            'success': False,
+            'message': f'Payment failed with code {result_code}',
+            'result_code': result_code
+        }, status=status.HTTP_400_BAD_REQUEST)

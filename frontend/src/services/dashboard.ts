@@ -56,6 +56,51 @@ export interface RevenueByDay {
   orders_count: number;
 }
 
+export interface ExpensiveMenuItem {
+  id: number;
+  name: string;
+  price: number;
+  category: string;
+  sales_count: number;
+  total_revenue: number;
+  status: string;
+}
+
+export interface OrderHistory {
+  status_distribution: Array<{
+    status: string;
+    count: number;
+  }>;
+  time_distribution: {
+    morning: number;
+    afternoon: number;
+    evening: number;
+    night: number;
+  };
+  average_order_value: number;
+  most_active_tables: Array<{
+    id: number;
+    name: string;
+    order_count: number;
+    total_revenue: number;
+  }>;
+}
+
+export interface PeakHour {
+  hour: number;
+  order_count: number;
+  revenue: number;
+  is_peak: boolean;
+}
+
+export interface StaffPerformance {
+  staff_id: number;
+  staff_name: string;
+  staff_email: string;
+  total_orders: number;
+  total_revenue: number;
+}
+
 export const dashboardApi = {
   // Lấy thống kê tổng quan
   getStats: () => {
@@ -91,5 +136,41 @@ export const dashboardApi = {
       data: RevenueByDay[];
       message?: string;
     }>("/dashboard/revenue-by-day/", { params: { days } });
+  },
+
+  // Lấy món ăn đắt nhất
+  getMostExpensiveItems: (limit: number = 5) => {
+    return api.get<{
+      success: boolean;
+      data: ExpensiveMenuItem[];
+      message?: string;
+    }>("/dashboard/insights/most-expensive/", { params: { limit } });
+  },
+
+  // Lấy lịch sử đơn hàng
+  getOrderHistory: (days: number = 30) => {
+    return api.get<{
+      success: boolean;
+      data: OrderHistory;
+      message?: string;
+    }>("/dashboard/insights/order-history/", { params: { days } });
+  },
+
+  // Lấy giờ cao điểm
+  getPeakHours: (days: number = 30) => {
+    return api.get<{
+      success: boolean;
+      data: PeakHour[];
+      message?: string;
+    }>("/dashboard/insights/peak-hours/", { params: { days } });
+  },
+
+  // Lấy hiệu suất nhân viên
+  getStaffPerformance: (days: number = 30) => {
+    return api.get<{
+      success: boolean;
+      data: StaffPerformance[];
+      message?: string;
+    }>("/dashboard/insights/staff-performance/", { params: { days } });
   },
 };

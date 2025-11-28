@@ -17,6 +17,10 @@ urlpatterns = [
     # Payment endpoints
     path('<int:order_id>/payments/', views.PaymentCreateView.as_view(), name='payment-create'),
     
+    # MoMo Payment endpoints
+    path('<int:order_id>/payments/momo/', views.create_momo_payment, name='momo-payment-create'),
+    path('<int:order_id>/payments/momo/status/', views.check_momo_payment_status, name='momo-payment-status'),
+    
     # Statistics endpoint
     path('stats/', views.order_stats_view, name='order-stats'),
 ]

@@ -49,6 +49,14 @@ export interface Alert {
   count?: number;
 }
 
+export interface StaffPerformance {
+  staff_id: number;
+  staff_name: string;
+  staff_email: string;
+  total_orders: number;
+  total_revenue: number;
+}
+
 export const staffDashboardApi = {
   getStats: async (): Promise<StaffStats> => {
     const response = await api.get("/dashboard/staff/stats/");
@@ -62,6 +70,13 @@ export const staffDashboardApi = {
 
   getAlerts: async (): Promise<Alert[]> => {
     const response = await api.get("/dashboard/staff/alerts/");
+    return response.data.data;
+  },
+
+  getMyPerformance: async (days: number = 30): Promise<StaffPerformance[]> => {
+    const response = await api.get("/dashboard/insights/staff-performance/", {
+      params: { days },
+    });
     return response.data.data;
   },
 };
