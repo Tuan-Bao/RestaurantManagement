@@ -1,5 +1,5 @@
-import api from './api';
-import type { Order, OrderItem } from '../types/restaurant';
+import api from "./api";
+import type { Order, OrderItem } from "../types/restaurant";
 
 export const ordersApi = {
   // Lấy đơn hàng theo bàn
@@ -24,11 +24,14 @@ export const ordersApi = {
       success: boolean;
       data: Order;
       message?: string;
-    }>('/orders/', orderData);
+    }>("/orders/", orderData);
   },
 
-  // Cập nhật trạng thái món ăn 
-  updateOrderItemStatus: (itemId: number, status: 'ordered' | 'cooking' | 'done' | 'cancelled') => {
+  // Cập nhật trạng thái món ăn
+  updateOrderItemStatus: (
+    itemId: number,
+    status: "ordered" | "cooking" | "done" | "cancelled"
+  ) => {
     return api.patch<{
       success: boolean;
       data: OrderItem;
@@ -45,29 +48,79 @@ export const ordersApi = {
   },
 
   // Cập nhật món trong đơn hàng - GỬI TRỰC TIẾP ARRAY
-  updateOrderItems: (orderId: number, items: Array<{
-    menu_item: number;  
-    quantity: number;
-    note?: string;
-  }>) => {
+  updateOrderItems: (
+    orderId: number,
+    items: Array<{
+      menu_item: number;
+      quantity: number;
+      note?: string;
+    }>
+  ) => {
     return api.patch<{
       success: boolean;
       data: Order;
       message?: string;
-    }>(`/orders/${orderId}/items/`, items); 
+    }>(`/orders/${orderId}/items/`, items);
   },
 
   // Tạo thanh toán
-  createPayment: (orderId: number, paymentData: {
-    amount: number;
-    discount?: number;
-    tax?: number;
-    method: 'cash' | 'card' | 'e_wallet';  
-  }) => {
+  createPayment: (
+    orderId: number,
+    paymentData: {
+      amount: number;
+      discount?: number;
+      tax?: number;
+      method: "cash" | "card" | "e_wallet";
+    }
+  ) => {
     return api.post<{
       success: boolean;
       data: any;
       message?: string;
     }>(`/orders/${orderId}/payments/`, paymentData);
-  }
+  },
+
+  // Tạo thanh toán MoMo
+  createMoMoPayment: (orderId: number) => {
+    return api.post<{
+      success: boolean;
+      data: {
+        payment_url: string;
+        qr_code_url: string;
+        deep_link: string;
+        request_id: string;
+        order_id: string;
+        amount: number;
+      };
+      message?: string;
+    }>(`/orders/${orderId}/payments/momo/`);
+  },
+
+  // Kiểm tra trạng thái thanh toán MoMo
+  checkMoMoPaymentStatus: (orderId: number) => {
+    return api.get<{
+      success: boolean;
+      data: {
+        status: "paid" | "unpaid";
+        paid_at?: string;
+      };
+      message?: string;
+    }>(`/orders/${orderId}/payments/momo/status/`);
+  },
+
+  // Trigger MoMo callback thủ công (cho development/đồ án)
+  triggerMoMoCallback: (
+    orderId: string,
+    amount: number,
+    resultCode: number
+  ) => {
+    return api.post<{
+      success: boolean;
+      message: string;
+    }>("/payments/momo/trigger-callback/", {
+      orderId,
+      amount,
+      resultCode,
+    });
+  },
 };

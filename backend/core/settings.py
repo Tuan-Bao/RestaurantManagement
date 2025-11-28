@@ -184,3 +184,11 @@ CORS_ALLOW_CREDENTIALS = True
 
 # Không dùng custom user model nữa
 # AUTH_USER_MODEL = 'accounts.User'
+
+# MoMo Payment Configuration
+# Test credentials from MoMo Developer Portal
+MOMO_PARTNER_CODE = config('MOMO_PARTNER_CODE', default='MOMOBKUN20180529')
+MOMO_ACCESS_KEY = config('MOMO_ACCESS_KEY', default='klm05TvNBzhg7h7j')
+MOMO_SECRET_KEY = config('MOMO_SECRET_KEY', default='at67qH6mk8w5Y1nAyMoYKMWACiEi2bsa')
+MOMO_REDIRECT_URL = config('MOMO_REDIRECT_URL', default='http://localhost:3000/payment/momo/result')
+MOMO_IPN_URL = config('MOMO_IPN_URL', default='http://localhost:8000/api/payments/momo/callback/')

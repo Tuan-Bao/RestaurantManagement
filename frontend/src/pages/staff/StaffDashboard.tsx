@@ -1,31 +1,38 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import StaffLayout from "../../layouts/StaffLayout";
 import {
   staffDashboardApi,
   type StaffStats,
   type ActiveOrder,
   type Alert,
+  type StaffPerformance,
 } from "../../services/staffDashboard";
 import Loading from "../../components/shared/Loading";
 
 const StaffDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<StaffStats | null>(null);
   const [activeOrders, setActiveOrders] = useState<ActiveOrder[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [myPerformance, setMyPerformance] = useState<StaffPerformance[]>([]);
+  const [showPerformance, setShowPerformance] = useState(false);
 
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      const [statsData, ordersData, alertsData] = await Promise.all([
+      const [statsData, ordersData, alertsData, perfData] = await Promise.all([
         staffDashboardApi.getStats(),
         staffDashboardApi.getActiveOrders(),
         staffDashboardApi.getAlerts(),
+        staffDashboardApi.getMyPerformance(30),
       ]);
 
       setStats(statsData);
       setActiveOrders(ordersData);
       setAlerts(alertsData);
+      setMyPerformance(perfData);
     } catch (error) {
       console.error("Error loading staff dashboard:", error);
     } finally {
@@ -129,6 +136,83 @@ const StaffDashboard: React.FC = () => {
         </div>
       </div>
 
+      {/* My Performance Section */}
+      <div className="row g-4 mb-4">
+        <div className="col-12">
+          <div className="card">
+            <div className="card-header d-flex justify-content-between align-items-center">
+              <h6 className="card-title mb-0">
+                <i className="bi bi-bar-chart me-2"></i>
+                Hiệu suất của tôi (30 ngày)
+              </h6>
+              <button
+                className="btn btn-sm btn-outline-primary"
+                onClick={() => setShowPerformance(!showPerformance)}
+              >
+                <i
+                  className={`bi bi-${
+                    showPerformance ? "chevron-up" : "chevron-down"
+                  } me-1`}
+                ></i>
+                {showPerformance ? "Thu gọn" : "Xem chi tiết"}
+              </button>
+            </div>
+            {showPerformance && myPerformance.length > 0 && (
+              <div className="card-body">
+                <div className="row g-3">
+                  {myPerformance.map(perf => (
+                    <div className="col-12" key={perf.staff_id}>
+                      <div className="card bg-light">
+                        <div className="card-body">
+                          <div className="row align-items-center">
+                            <div className="col-md-4">
+                              <h5 className="mb-1">
+                                <i className="bi bi-person-circle me-2"></i>
+                                {perf.staff_name}
+                              </h5>
+                              <small className="text-muted">
+                                {perf.staff_email}
+                              </small>
+                            </div>
+                            <div className="col-md-4 text-center">
+                              <div className="mb-1">
+                                <i className="bi bi-cart-check text-primary fs-3"></i>
+                              </div>
+                              <h4 className="mb-0">{perf.total_orders}</h4>
+                              <small className="text-muted">
+                                Đơn hàng đã xử lý
+                              </small>
+                            </div>
+                            <div className="col-md-4 text-center">
+                              <div className="mb-1">
+                                <i className="bi bi-currency-dollar text-success fs-3"></i>
+                              </div>
+                              <h4 className="mb-0">
+                                {formatCurrency(perf.total_revenue)}
+                              </h4>
+                              <small className="text-muted">
+                                Tổng doanh thu
+                              </small>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="alert alert-info mt-3 mb-0">
+                  <i className="bi bi-info-circle me-2"></i>
+                  <small>
+                    Số liệu thống kê trong 30 ngày gần đây. Tiếp tục phát huy để
+                    đạt hiệu suất tốt nhất!
+                  </small>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Quick Actions */}
       <div className="row g-4 mb-4">
         <div className="col-12">
@@ -143,15 +227,21 @@ const StaffDashboard: React.FC = () => {
               <div className="row g-3">
                 <div className="col-md-3">
                   <div className="d-grid">
-                    <button className="btn btn-outline-primary btn-lg">
-                      <i className="bi bi-plus-circle d-block fs-2 mb-2"></i>
-                      Tạo đơn mới
+                    <button
+                      className="btn btn-outline-primary btn-lg"
+                      onClick={() => navigate("/staff/orders")}
+                    >
+                      <i className="bi bi-list-check d-block fs-2 mb-2"></i>
+                      Xem đơn hàng
                     </button>
                   </div>
                 </div>
                 <div className="col-md-3">
                   <div className="d-grid">
-                    <button className="btn btn-outline-success btn-lg">
+                    <button
+                      className="btn btn-outline-success btn-lg"
+                      onClick={() => navigate("/staff/tables")}
+                    >
                       <i className="bi bi-grid-3x3-gap d-block fs-2 mb-2"></i>
                       Xem tình trạng bàn
                     </button>
@@ -159,7 +249,10 @@ const StaffDashboard: React.FC = () => {
                 </div>
                 <div className="col-md-3">
                   <div className="d-grid">
-                    <button className="btn btn-outline-info btn-lg">
+                    <button
+                      className="btn btn-outline-info btn-lg"
+                      onClick={() => navigate("/staff/menu")}
+                    >
                       <i className="bi bi-journal-text d-block fs-2 mb-2"></i>
                       Thực đơn
                     </button>
@@ -167,7 +260,10 @@ const StaffDashboard: React.FC = () => {
                 </div>
                 <div className="col-md-3">
                   <div className="d-grid">
-                    <button className="btn btn-outline-warning btn-lg">
+                    <button
+                      className="btn btn-outline-warning btn-lg"
+                      onClick={() => navigate("/staff/inventory")}
+                    >
                       <i className="bi bi-box d-block fs-2 mb-2"></i>
                       Kiểm tra kho
                     </button>

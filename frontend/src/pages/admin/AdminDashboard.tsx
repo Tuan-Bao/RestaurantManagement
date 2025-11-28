@@ -6,6 +6,9 @@ import type {
   RecentOrder,
   TopMenuItem,
   RevenueByDay,
+  ExpensiveMenuItem,
+  OrderHistory,
+  PeakHour,
 } from "../../services/dashboard";
 import Loading from "../../components/shared/Loading";
 
@@ -15,7 +18,11 @@ const AdminDashboard: React.FC = () => {
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
   const [topItems, setTopItems] = useState<TopMenuItem[]>([]);
   const [revenueData, setRevenueData] = useState<RevenueByDay[]>([]);
+  const [expensiveItems, setExpensiveItems] = useState<ExpensiveMenuItem[]>([]);
+  const [orderHistory, setOrderHistory] = useState<OrderHistory | null>(null);
+  const [peakHours, setPeakHours] = useState<PeakHour[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [showInsights, setShowInsights] = useState(false);
 
   useEffect(() => {
     loadDashboardData();
@@ -26,11 +33,22 @@ const AdminDashboard: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const [statsRes, ordersRes, topItemsRes, revenueRes] = await Promise.all([
+      const [
+        statsRes,
+        ordersRes,
+        topItemsRes,
+        revenueRes,
+        expensiveRes,
+        historyRes,
+        peakRes,
+      ] = await Promise.all([
         dashboardApi.getStats(),
         dashboardApi.getRecentOrders(5),
         dashboardApi.getTopMenuItems(5, 30),
         dashboardApi.getRevenueByDay(7),
+        dashboardApi.getMostExpensiveItems(5),
+        dashboardApi.getOrderHistory(30),
+        dashboardApi.getPeakHours(30),
       ]);
 
       if (statsRes.data.success) {
@@ -47,6 +65,18 @@ const AdminDashboard: React.FC = () => {
 
       if (revenueRes.data.success) {
         setRevenueData(revenueRes.data.data);
+      }
+
+      if (expensiveRes.data.success) {
+        setExpensiveItems(expensiveRes.data.data);
+      }
+
+      if (historyRes.data.success) {
+        setOrderHistory(historyRes.data.data);
+      }
+
+      if (peakRes.data.success) {
+        setPeakHours(peakRes.data.data);
       }
     } catch (err: unknown) {
       console.error("Failed to load dashboard data:", err);
@@ -359,6 +389,262 @@ const AdminDashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Insights Toggle Button */}
+      {/* <div className="row mb-4">
+        <div className="col-12">
+          <button
+            className="btn btn-primary"
+            onClick={() => setShowInsights(!showInsights)}
+          >
+            <i
+              className={`bi bi-${showInsights ? "eye-slash" : "eye"} me-2`}
+            ></i>
+            {showInsights ? "Ẩn Insights" : "Xem Insights Chi Tiết"}
+          </button>
+        </div>
+      </div> */}
+
+      {/* Insights Section */}
+      {/* {showInsights && ( */}
+      <>
+        {/* Most Expensive Items */}
+        <div className="row g-4 mb-4">
+          <div className="col-lg-6">
+            <div className="card">
+              <div className="card-header bg-white">
+                <h6 className="card-title mb-0">
+                  <i className="bi bi-gem me-2"></i>
+                  Món ăn đắt nhất
+                </h6>
+              </div>
+              <div className="card-body">
+                {expensiveItems.length > 0 ? (
+                  <div className="table-responsive">
+                    <table className="table table-hover">
+                      <thead>
+                        <tr>
+                          <th>Món ăn</th>
+                          <th>Danh mục</th>
+                          <th className="text-end">Giá</th>
+                          <th className="text-end">Đã bán</th>
+                          <th className="text-end">Doanh thu</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {expensiveItems.map(item => (
+                          <tr key={item.id}>
+                            <td>
+                              <strong>{item.name}</strong>
+                              {item.status === "unavailable" && (
+                                <span className="badge bg-secondary ms-2">
+                                  Không có
+                                </span>
+                              )}
+                            </td>
+                            <td>{item.category}</td>
+                            <td className="text-end fw-bold text-danger">
+                              {formatCurrency(item.price)}
+                            </td>
+                            <td className="text-end">{item.sales_count}</td>
+                            <td className="text-end">
+                              {formatCurrency(item.total_revenue)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-5">
+                    <i className="bi bi-gem display-1 text-muted"></i>
+                    <p className="text-muted mt-3">Chưa có dữ liệu</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Order History by Time */}
+          <div className="col-lg-6">
+            <div className="card">
+              <div className="card-header bg-white">
+                <h6 className="card-title mb-0">
+                  <i className="bi bi-clock-history me-2"></i>
+                  Phân bố đơn hàng theo thời gian (30 ngày)
+                </h6>
+              </div>
+              <div className="card-body">
+                {orderHistory && (
+                  <>
+                    <div className="mb-4">
+                      <h6>Theo khung giờ</h6>
+                      <div className="row g-3">
+                        <div className="col-6">
+                          <div className="card bg-light">
+                            <div className="card-body text-center py-2">
+                              <i className="bi bi-sunrise fs-4 text-warning"></i>
+                              <div className="fw-bold">
+                                {orderHistory.time_distribution.morning}
+                              </div>
+                              <small className="text-muted">Sáng (6-11h)</small>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="col-6">
+                          <div className="card bg-light">
+                            <div className="card-body text-center py-2">
+                              <i className="bi bi-sun fs-4 text-orange"></i>
+                              <div className="fw-bold">
+                                {orderHistory.time_distribution.afternoon}
+                              </div>
+                              <small className="text-muted">
+                                Chiều (12-17h)
+                              </small>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="col-6">
+                          <div className="card bg-light">
+                            <div className="card-body text-center py-2">
+                              <i className="bi bi-sunset fs-4 text-danger"></i>
+                              <div className="fw-bold">
+                                {orderHistory.time_distribution.evening}
+                              </div>
+                              <small className="text-muted">Tối (18-21h)</small>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="col-6">
+                          <div className="card bg-light">
+                            <div className="card-body text-center py-2">
+                              <i className="bi bi-moon-stars fs-4 text-primary"></i>
+                              <div className="fw-bold">
+                                {orderHistory.time_distribution.night}
+                              </div>
+                              <small className="text-muted">Đêm (22-5h)</small>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="alert alert-info mb-0">
+                      <strong>Giá trị đơn trung bình:</strong>{" "}
+                      {formatCurrency(orderHistory.average_order_value)}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Most Active Tables */}
+        {orderHistory && orderHistory.most_active_tables.length > 0 && (
+          <div className="row g-4 mb-4">
+            <div className="col-12">
+              <div className="card">
+                <div className="card-header bg-white">
+                  <h6 className="card-title mb-0">
+                    <i className="bi bi-grid-3x3 me-2"></i>
+                    Bàn hoạt động nhiều nhất (30 ngày)
+                  </h6>
+                </div>
+                <div className="card-body">
+                  <div className="row g-3">
+                    {orderHistory.most_active_tables.map((table, index) => (
+                      <div className="col-md-4 col-lg-2" key={table.id}>
+                        <div
+                          className={`card text-center ${
+                            index === 0 ? "border-primary" : ""
+                          }`}
+                        >
+                          <div className="card-body">
+                            {index === 0 && (
+                              <i className="bi bi-trophy-fill text-warning fs-3 mb-2"></i>
+                            )}
+                            <h4 className="mb-1">{table.name}</h4>
+                            <div className="text-muted small mb-1">
+                              {table.order_count} đơn hàng
+                            </div>
+                            <div className="fw-bold text-success">
+                              {formatCurrency(table.total_revenue)}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Peak Hours */}
+        {peakHours.length > 0 && (
+          <div className="row g-4 mb-4">
+            <div className="col-12">
+              <div className="card">
+                <div className="card-header bg-white">
+                  <h6 className="card-title mb-0">
+                    <i className="bi bi-graph-up-arrow me-2"></i>
+                    Giờ cao điểm (30 ngày)
+                  </h6>
+                </div>
+                <div className="card-body">
+                  <div className="table-responsive">
+                    <table className="table table-sm">
+                      <thead>
+                        <tr>
+                          <th>Giờ</th>
+                          {peakHours.map(hour => (
+                            <th key={hour.hour} className="text-center">
+                              {hour.hour}h
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td className="fw-bold">Đơn hàng</td>
+                          {peakHours.map(hour => (
+                            <td key={hour.hour} className="text-center">
+                              <span
+                                className={
+                                  hour.is_peak ? "badge bg-danger" : ""
+                                }
+                              >
+                                {hour.order_count}
+                              </span>
+                            </td>
+                          ))}
+                        </tr>
+                        <tr>
+                          <td className="fw-bold">Doanh thu</td>
+                          {peakHours.map(hour => (
+                            <td key={hour.hour} className="text-center small">
+                              {(hour.revenue / 1000).toFixed(0)}K
+                            </td>
+                          ))}
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="alert alert-warning mt-3 mb-0">
+                    <i className="bi bi-info-circle me-2"></i>
+                    <small>
+                      Giờ cao điểm được đánh dấu đỏ (đơn hàng {">"} 70% so với
+                      giờ đông nhất)
+                    </small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </>
+      {/* )} */}
 
       {/* Recent Orders Table */}
       <div className="row">
