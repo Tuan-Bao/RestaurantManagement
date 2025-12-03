@@ -17,8 +17,8 @@ import {
 import {
   SearchOutlined,
   AppstoreOutlined,
-  CheckCircleOutlined,
-  StopOutlined} from "@ant-design/icons";
+  CheckCircleOutlined}  
+from "@ant-design/icons";
 import StaffLayout from "../../layouts/StaffLayout";
 import { menuApi } from "../../services/menu";
 import type { Category, MenuItem } from "../../types/restaurant";
