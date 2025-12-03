@@ -531,5 +531,5 @@ const AccountsManagement: React.FC = () => {
     </AdminLayout>
   );
 };
-
+// fix
 export default AccountsManagement;
