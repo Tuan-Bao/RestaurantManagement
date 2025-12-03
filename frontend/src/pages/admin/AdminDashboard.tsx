@@ -11,6 +11,16 @@ import type {
   PeakHour,
 } from "../../services/dashboard";
 import Loading from "../../components/shared/Loading";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 
 const AdminDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -290,47 +300,82 @@ const AdminDashboard: React.FC = () => {
             </div>
             <div className="card-body">
               {revenueData.length > 0 ? (
-                <div className="table-responsive">
-                  <table className="table table-hover">
-                    <thead>
-                      <tr>
-                        <th>Ngày</th>
-                        <th className="text-end">Số đơn</th>
-                        <th className="text-end">Doanh thu</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {revenueData.map((item, index) => (
-                        <tr key={index}>
-                          <td>{formatShortDate(item.date)}</td>
-                          <td className="text-end">{item.orders_count}</td>
-                          <td className="text-end">
-                            {formatCurrency(item.revenue)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr className="fw-bold">
-                        <td>Tổng</td>
-                        <td className="text-end">
-                          {revenueData.reduce(
-                            (sum, item) => sum + item.orders_count,
+                <>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={revenueData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis
+                        dataKey="date"
+                        tickFormatter={value => formatShortDate(value)}
+                      />
+                      <YAxis
+                        yAxisId="left"
+                        orientation="left"
+                        stroke="#8884d8"
+                        label={{
+                          value: "Số đơn",
+                          angle: -90,
+                          position: "insideLeft",
+                        }}
+                      />
+                      <YAxis
+                        yAxisId="right"
+                        orientation="right"
+                        stroke="#82ca9d"
+                        tickFormatter={value =>
+                          `${(value / 1000000).toFixed(1)}M`
+                        }
+                        label={{
+                          value: "Doanh thu (VNĐ)",
+                          angle: 90,
+                          position: "insideRight",
+                        }}
+                      />
+                      <Tooltip
+                        formatter={(value: number, name: string) => {
+                          if (name === "Số đơn") return value;
+                          return formatCurrency(value);
+                        }}
+                        labelFormatter={value => formatShortDate(value)}
+                      />
+                      <Legend />
+                      <Bar
+                        yAxisId="left"
+                        dataKey="orders_count"
+                        name="Số đơn"
+                        fill="#8884d8"
+                      />
+                      <Bar
+                        yAxisId="right"
+                        dataKey="revenue"
+                        name="Doanh thu"
+                        fill="#82ca9d"
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                  <div className="mt-3 text-center">
+                    <div className="d-inline-block me-4">
+                      <strong>Tổng đơn hàng:</strong>{" "}
+                      <span className="text-primary">
+                        {revenueData.reduce(
+                          (sum, item) => sum + item.orders_count,
+                          0
+                        )}
+                      </span>
+                    </div>
+                    <div className="d-inline-block">
+                      <strong>Tổng doanh thu:</strong>{" "}
+                      <span className="text-success">
+                        {formatCurrency(
+                          revenueData.reduce(
+                            (sum, item) => sum + item.revenue,
                             0
-                          )}
-                        </td>
-                        <td className="text-end">
-                          {formatCurrency(
-                            revenueData.reduce(
-                              (sum, item) => sum + item.revenue,
-                              0
-                            )
-                          )}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
+                          )
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                </>
               ) : (
                 <div className="text-center py-5">
                   <i className="bi bi-bar-chart display-1 text-muted"></i>
