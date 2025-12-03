@@ -206,3 +206,6 @@ Sau khi setup thành công, bạn có thể:
 2. Truy cập http://localhost:8000/admin để quản lý backend
 3. Bắt đầu phát triển các tính năng
 4. Khi ổn định, có thể quay lại sử dụng Docker
+
+
+##Tuyền test 
